@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  coverages     Coverage[]
+  alerts        Alert[]
+  transactions  Transaction[]
+  assets        Asset[]
+  claims        Claim[]
+  familyMembers FamilyMember[]
+  documents     Document[]
+}
+
+model FamilyMember {
+  id        String   @id @default(cuid())
+  name      String
+  relation  String   // e.g. "spouse", "child", "parent"
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Coverage {
+  id            String   @id @default(cuid())
+  provider      String
+  type          String
+  category      String   // health, auto, home, travel, warranty, creditcard, etc.
+  policyNo      String?
+  status        String   @default("active") // active, expiring, expired, pending
+  statusLabel   String   @default("Active")
+  covered       String   // JSON array of covered entities
+  startDate     String
+  endDate       String
+  premium       Float    @default(0)
+  deductible    Float?
+  oopMax        Float?
+  coverageLimit String?  // "limit" is reserved in some DBs
+  coInsurance   String?
+  exclusions    String   @default("[]") // JSON array
+  claimPhone    String?
+  claimUrl      String?
+  summary       String?
+  confidence    Float?   // AI parsing confidence score (0-1)
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId    String?  // link to source document
+  document      Document? @relation(fields: [documentId], references: [id])
+
+  alerts        Alert[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([category])
+  @@index([status])
+}
+
+model Alert {
+  id         String   @id @default(cuid())
+  type       String   // expiring, renewal, unused, gap, claim
+  severity   String   // warning, info, tip, urgent
+  title      String
+  detail     String
+  date       String
+  read       Boolean  @default(false)
+
+  coverageId String?
+  coverage   Coverage? @relation(fields: [coverageId], references: [id], onDelete: SetNull)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+}
+
+model Transaction {
+  id             String  @id @default(cuid())
+  date           String
+  merchant       String
+  amount         Float
+  card           String
+  cardType       String  // credit, debit
+  category       String
+  coverageStatus String  // covered, partial, uncovered
+  benefits       String  @default("[]") // JSON array
+  missedOpp      String? // missed opportunity text
+
+  userId         String
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Asset {
+  id              String  @id @default(cuid())
+  name            String
+  category        String
+  value           Float
+  purchaseDate    String
+  photos          Int     @default(0)
+  lastPhotoUpdate String?
+  coverages       String  @default("[]") // JSON array of coverage names
+  riskLevel       String  @default("low") // low, medium, high
+  riskNote        String?
+
+  userId          String
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Claim {
+  id         String  @id @default(cuid())
+  incident   String
+  date       String
+  provider   String
+  category   String
+  status     String  @default("not_started") // not_started, in_progress, submitted, approved, denied, paid
+  step       Int     @default(0)
+  totalSteps Int     @default(5)
+  steps      String  @default("[]") // JSON array
+  nextAction String?
+  deadline   String?
+
+  userId     String
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Document {
+  id           String   @id @default(cuid())
+  filename     String
+  mimeType     String
+  size         Int
+  storagePath  String   // path to file on disk or object storage
+  parsedData   String?  // JSON of AI-extracted fields
+  confidence   Float?   // overall parsing confidence
+
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coverages    Coverage[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
