@@ -27,7 +27,7 @@ model User {
 model FamilyMember {
   id        String   @id @default(cuid())
   name      String
-  relation  String   // e.g. "spouse", "child", "parent"
+  relation  String
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
@@ -39,27 +39,27 @@ model Coverage {
   id            String   @id @default(cuid())
   provider      String
   type          String
-  category      String   // health, auto, home, travel, warranty, creditcard, etc.
+  category      String
   policyNo      String?
-  status        String   @default("active") // active, expiring, expired, pending
+  status        String   @default("active")
   statusLabel   String   @default("Active")
-  covered       String   // JSON array of covered entities
+  covered       String
   startDate     String
   endDate       String
   premium       Float    @default(0)
   deductible    Float?
   oopMax        Float?
-  coverageLimit String?  // "limit" is reserved in some DBs
+  coverageLimit String?
   coInsurance   String?
-  exclusions    String   @default("[]") // JSON array
+  exclusions    String   @default("[]")
   claimPhone    String?
   claimUrl      String?
   summary       String?
-  confidence    Float?   // AI parsing confidence score (0-1)
+  confidence    Float?
 
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  documentId    String?  // link to source document
+  documentId    String?
   document      Document? @relation(fields: [documentId], references: [id])
 
   alerts        Alert[]
@@ -73,8 +73,8 @@ model Coverage {
 
 model Alert {
   id         String   @id @default(cuid())
-  type       String   // expiring, renewal, unused, gap, claim
-  severity   String   // warning, info, tip, urgent
+  type       String
+  severity   String
   title      String
   detail     String
   date       String
@@ -97,11 +97,11 @@ model Transaction {
   merchant       String
   amount         Float
   card           String
-  cardType       String  // credit, debit
+  cardType       String
   category       String
-  coverageStatus String  // covered, partial, uncovered
-  benefits       String  @default("[]") // JSON array
-  missedOpp      String? // missed opportunity text
+  coverageStatus String
+  benefits       String  @default("[]")
+  missedOpp      String?
 
   userId         String
   user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -118,8 +118,8 @@ model Asset {
   purchaseDate    String
   photos          Int     @default(0)
   lastPhotoUpdate String?
-  coverages       String  @default("[]") // JSON array of coverage names
-  riskLevel       String  @default("low") // low, medium, high
+  coverages       String  @default("[]")
+  riskLevel       String  @default("low")
   riskNote        String?
 
   userId          String
@@ -136,10 +136,10 @@ model Claim {
   date       String
   provider   String
   category   String
-  status     String  @default("not_started") // not_started, in_progress, submitted, approved, denied, paid
+  status     String  @default("not_started")
   step       Int     @default(0)
   totalSteps Int     @default(5)
-  steps      String  @default("[]") // JSON array
+  steps      String  @default("[]")
   nextAction String?
   deadline   String?
 
@@ -156,9 +156,9 @@ model Document {
   filename     String
   mimeType     String
   size         Int
-  storagePath  String   // path to file on disk or object storage
-  parsedData   String?  // JSON of AI-extracted fields
-  confidence   Float?   // overall parsing confidence
+  storagePath  String
+  parsedData   String?
+  confidence   Float?
 
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
