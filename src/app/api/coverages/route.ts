@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireUserId } from '@/lib/session';
+import { ensureRenewalAlert } from '@/lib/alerts/renewal';
 
 export async function GET() {
   const session = await requireUserId();
@@ -52,6 +53,16 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  await ensureRenewalAlert(prisma, {
+    coverage: {
+      id: coverage.id,
+      provider: coverage.provider,
+      category: coverage.category,
+      endDate: coverage.endDate,
+    },
+    userId: session.userId,
+  });
+
   return NextResponse.json({
     ...coverage,
     covered: JSON.parse(coverage.covered),
@@ -94,6 +105,18 @@ export async function PATCH(req: NextRequest) {
   if ('confidence' in body) data.confidence = body.confidence ?? null;
 
   const updated = await prisma.coverage.update({ where: { id }, data });
+
+  if ('endDate' in body) {
+    await ensureRenewalAlert(prisma, {
+      coverage: {
+        id: updated.id,
+        provider: updated.provider,
+        category: updated.category,
+        endDate: updated.endDate,
+      },
+      userId: session.userId,
+    });
+  }
 
   return NextResponse.json({
     ...updated,

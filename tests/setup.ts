@@ -1,22 +1,24 @@
 import { execSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll } from 'vitest';
 
-// Set up the test database BEFORE Prisma client is imported by any test file.
-// vitest setupFiles run after imports of the setup module's own dependencies but
-// BEFORE the test file imports — so module-level side effects here are safe.
-const tmpDir = mkdtempSync(path.join(tmpdir(), 'benefitly-test-'));
-const dbFile = path.join(tmpDir, 'test.db');
-process.env.DATABASE_URL = `file:${dbFile}`;
+// Tests run against a real Postgres (matching production). Provide a
+// connection string via TEST_DATABASE_URL or DATABASE_URL. For local dev:
+//   docker run -d --rm --name benefitly-test-pg -p 54322:5432 \
+//     -e POSTGRES_PASSWORD=test -e POSTGRES_DB=benefitly_test postgres:16-alpine
+//   export TEST_DATABASE_URL=postgresql://postgres:test@localhost:54322/benefitly_test
+
+const explicit = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+if (!explicit || !/^postgres(ql)?:\/\//.test(explicit)) {
+  throw new Error(
+    'TEST_DATABASE_URL (or DATABASE_URL) must be a postgres URL. ' +
+      'Run a local Postgres (see tests/setup.ts header for a one-line docker command) and export TEST_DATABASE_URL.',
+  );
+}
+
+process.env.DATABASE_URL = explicit;
 process.env.AUTH_SECRET ||= 'test-secret-not-for-production';
 
-execSync('npx prisma db push --skip-generate --accept-data-loss', {
+// Reset the schema before each run so fixtures start from a clean slate.
+execSync('npx prisma db push --skip-generate --accept-data-loss --force-reset', {
   stdio: 'pipe',
   env: process.env,
-});
-
-afterAll(() => {
-  rmSync(tmpDir, { recursive: true, force: true });
 });
