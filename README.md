@@ -13,6 +13,22 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Tests
+
+```bash
+npm test          # one-shot run
+npm run test:watch
+```
+
+Vitest spins up an isolated SQLite database per run via `prisma db push` and exercises the API route handlers directly. The session-isolation suite seeds two users and asserts that no protected route, GET or mutating, will leak or mutate the other user's `Coverage`, `Alert`, `FamilyMember`, or `Document` rows.
+
+## Authentication & data isolation
+
+- NextAuth v5 (credentials + bcrypt) with JWT sessions; the `userId` is exposed on `session.user.id`.
+- `src/proxy.ts` (Next.js 16 proxy/middleware) gates **all** `/api/*` routes except `/api/auth/*` and `/api/register`. Unauthenticated requests get a 401 before any handler runs.
+- Every protected handler also calls `requireUserId()` from `src/lib/session.ts` — defence in depth — and uses the returned `userId` for every Prisma query and ownership check. Mutations (`POST` / `PATCH` / `DELETE`) verify `userId` ownership before touching a row, so even a known id from another user returns 404.
+- Public routes are intentional: `/api/auth/*` (sign-in / sign-out / providers), `/api/register` (account creation).
+
 ## Tech Stack
 
 - **Framework:** Next.js 16 (App Router)
