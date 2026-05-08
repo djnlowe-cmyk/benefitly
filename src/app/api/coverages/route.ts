@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireUserId } from '@/lib/session';
+import { advanceOnboardingState } from '@/lib/onboarding';
 
 export async function GET() {
   const session = await requireUserId();
@@ -51,6 +52,11 @@ export async function POST(req: NextRequest) {
       userId: session.userId,
     },
   });
+
+  // First successful coverage save flips onboarding fresh -> first_save so
+  // the next dashboard render shows the example-query nudge. Conditional
+  // update means later saves are no-ops.
+  await advanceOnboardingState(session.userId, 'fresh', 'first_save');
 
   return NextResponse.json({
     ...coverage,
