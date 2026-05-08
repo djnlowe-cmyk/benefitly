@@ -7,6 +7,7 @@ import { useBreakpoint } from '@/lib/hooks';
 import { apiFetch } from '@/lib/api';
 import Sidebar from './Sidebar';
 import BottomTabBar from './BottomTabBar';
+import Footer from './Footer';
 import DashboardView from '@/components/dashboard/DashboardView';
 import CoverageDetail from '@/components/coverage/CoverageDetail';
 import SearchView from '@/components/search/SearchView';
@@ -357,6 +358,10 @@ export default function AppShell() {
         <main className={`flex-1 ${bp.isMobile ? 'px-4 py-4' : 'px-8 py-6'} max-w-6xl`}>
           {renderView()}
         </main>
+
+        {/* Footer hidden on mobile because BottomTabBar already pins to the bottom; the root layout still
+            renders a footer below the AppShell column for any user who scrolls past it. */}
+        {bp.isDesktop && <Footer />}
 
         {/* Mobile bottom tab bar */}
         {!bp.isDesktop && (

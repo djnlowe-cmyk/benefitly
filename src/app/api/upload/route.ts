@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (parseError) {
-        console.error('AI parsing failed:', parseError);
+        console.error('AI parsing failed:', parseError instanceof Error ? parseError.message : 'unknown');
         // Continue without parsed data — user can enter manually
       }
     }
@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
       needsReview: !confidence || confidence < 0.9,
     }, { status: 201 });
   } catch (error) {
-    console.error('Upload failed:', error);
+    console.error('Upload failed:', error instanceof Error ? error.message : 'unknown');
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
 }
