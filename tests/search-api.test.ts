@@ -37,7 +37,7 @@ function searchRequest(body: unknown): NextRequest {
   }) as unknown as NextRequest;
 }
 
-function mockClaudeReply(matches: unknown[]) {
+function mockClaudeReply(payload: unknown) {
   const fetchMock = vi.fn(async (url: string | URL | Request) => {
     const u = typeof url === 'string' ? url : (url as URL).toString();
     if (!u.startsWith('https://api.anthropic.com/')) {
@@ -45,7 +45,7 @@ function mockClaudeReply(matches: unknown[]) {
     }
     return new Response(
       JSON.stringify({
-        content: [{ type: 'text', text: JSON.stringify({ matches }) }],
+        content: [{ type: 'text', text: JSON.stringify(payload) }],
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
@@ -125,74 +125,125 @@ describe('POST /api/search', () => {
     expect(body.error).toBe('query required');
   });
 
+  it('rejects an over-length query with 400', async () => {
+    asUser(fixture.userA!);
+    process.env.ANTHROPIC_API_KEY = 'sk-test';
+    const res = await searchPOST(searchRequest({ query: 'x'.repeat(501) }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe('query too long');
+  });
+
   it('returns 401 when there is no session', async () => {
     sessionMock.current = null;
     const res = await searchPOST(searchRequest({ query: 'travel cancellation' }));
     expect(res.status).toBe(401);
   });
 
-  it('only returns matches whose coverageId belongs to the caller, dropping cross-user hallucinations silently', async () => {
+  it('only returns hits whose coverageId belongs to the caller, dropping cross-user and fabricated ids', async () => {
     asUser(fixture.userA!);
     process.env.ANTHROPIC_API_KEY = 'sk-test';
 
-    mockClaudeReply([
-      // Legit match against caller's travel policy
-      {
-        coverageId: fixture.coverageA1,
-        relevance: 'high',
-        citedField: 'covered',
-        citedValue: 'Trip cancellation up to £5,000',
-        explanation: 'Aviva travel covers cancellation.',
-        coordination: 'File with Aviva first.',
-      },
-      // Hostile: model returned another user's coverage id
-      {
-        coverageId: fixture.coverageB,
-        relevance: 'high',
-        citedField: 'covered',
-        citedValue: 'Diagnostic imaging including MRI',
-        explanation: 'Should not appear.',
-        coordination: 'Should not appear.',
-      },
-      // Hostile: a fabricated id
-      {
-        coverageId: '00000000-0000-0000-0000-000000000000',
-        relevance: 'low',
-        citedField: 'summary',
-        citedValue: 'fake',
-        explanation: 'Should not appear.',
-        coordination: 'Should not appear.',
-      },
-    ]);
+    mockClaudeReply({
+      results: [
+        // Legit match against caller's travel policy.
+        {
+          coverageId: fixture.coverageA1,
+          relevance: 'high',
+          citedField: 'covered[0]',
+          citedExcerpt: 'Trip cancellation up to £5,000',
+          explanation: 'Aviva travel covers cancellation.',
+          coordination: 'File with Aviva first.',
+        },
+        // Hostile: model returned another user's coverage id.
+        {
+          coverageId: fixture.coverageB,
+          relevance: 'high',
+          citedField: 'covered[0]',
+          citedExcerpt: 'Diagnostic imaging including MRI',
+          explanation: 'Should not appear.',
+        },
+        // Hostile: a fabricated id.
+        {
+          coverageId: '00000000-0000-0000-0000-000000000000',
+          relevance: 'low',
+          citedField: 'summary',
+          citedExcerpt: 'fake',
+          explanation: 'Should not appear.',
+        },
+      ],
+    });
 
     const res = await searchPOST(searchRequest({ query: 'am I covered for travel cancellation' }));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.matches).toHaveLength(1);
-    expect(body.matches[0].coverageId).toBe(fixture.coverageA1);
-    expect(body.matches[0].provider).toBe('Aviva');
-    expect(body.matches[0].sourceDocumentId).toBeNull();
+    expect(body.results).toHaveLength(1);
+    expect(body.results[0].coverageId).toBe(fixture.coverageA1);
+    expect(body.results[0].provider).toBe('Aviva');
+    expect(body.results[0].citedExcerpt).toBe('Trip cancellation up to £5,000');
+    expect(body.results[0].sourceDocumentId).toBeNull();
+    expect(body.conciergeAvailable).toBe(true);
   });
 
-  it('round-trips an empty matches list cleanly (status 200, no error key)', async () => {
+  it('drops hits whose citedExcerpt does not appear in the source coverage (anti-hallucination)', async () => {
     asUser(fixture.userA!);
     process.env.ANTHROPIC_API_KEY = 'sk-test';
-    mockClaudeReply([]);
+
+    mockClaudeReply({
+      results: [
+        {
+          coverageId: fixture.coverageA1,
+          relevance: 'high',
+          citedField: 'covered[0]',
+          // The model invented this string — it isn't a substring of the
+          // coverage JSON anywhere. We expect the boundary fn to drop it.
+          citedExcerpt: 'Includes pet boarding for up to 30 days',
+          explanation: 'Should not appear.',
+        },
+      ],
+      gapAnswer: {
+        explanation: 'Nothing in your library covers that.',
+        recommendedTypes: ['Travel insurance'],
+      },
+    });
+
+    const res = await searchPOST(searchRequest({ query: 'pet boarding' }));
+    const body = await res.json();
+    expect(body.results).toEqual([]);
+    expect(body.gapAnswer.explanation).toBe('Nothing in your library covers that.');
+    expect(body.gapAnswer.recommendedTypes).toEqual(['Travel insurance']);
+  });
+
+  it('round-trips an empty results list with a gapAnswer cleanly', async () => {
+    asUser(fixture.userA!);
+    process.env.ANTHROPIC_API_KEY = 'sk-test';
+    mockClaudeReply({
+      results: [],
+      gapAnswer: {
+        explanation: "You don't appear to have travel cancellation cover.",
+        recommendedTypes: ['Travel insurance with cancellation cover'],
+      },
+    });
     const res = await searchPOST(searchRequest({ query: 'completely unrelated query' }));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.matches).toEqual([]);
+    expect(body.results).toEqual([]);
+    expect(body.gapAnswer.recommendedTypes).toEqual([
+      'Travel insurance with cancellation cover',
+    ]);
     expect(body.error).toBeUndefined();
+    expect(body.conciergeAvailable).toBe(true);
   });
 
-  it('returns { matches: [], error: "search-unavailable" } with status 200 when ANTHROPIC_API_KEY is missing', async () => {
+  it('returns { results: [], error: "search-unavailable" } with status 200 when ANTHROPIC_API_KEY is missing', async () => {
     asUser(fixture.userA!);
     delete process.env.ANTHROPIC_API_KEY;
     // No fetch mock — the code path must short-circuit before any HTTP call.
     const res = await searchPOST(searchRequest({ query: 'travel cancellation' }));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.matches).toEqual([]);
+    expect(body.results).toEqual([]);
     expect(body.error).toBe('search-unavailable');
+    expect(body.conciergeAvailable).toBe(true);
   });
 });
