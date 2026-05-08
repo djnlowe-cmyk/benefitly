@@ -17,11 +17,11 @@ export type CoverageCategory =
 export type CoverageStatus = 'active' | 'expiring' | 'expired' | 'pending';
 
 export interface Coverage {
-  id: number;
+  id: string;
   provider: string;
   type: string;
   category: CoverageCategory;
-  policyNo: string;
+  policyNo: string | null;
   status: CoverageStatus;
   statusLabel: string;
   covered: string[];
@@ -30,12 +30,12 @@ export interface Coverage {
   premium: number;
   deductible: number | null;
   oopMax: number | null;
-  limit: string;
+  coverageLimit: string | null;
   coInsurance: string | null;
   exclusions: string[];
-  claimPhone: string;
-  claimUrl: string;
-  summary: string;
+  claimPhone: string | null;
+  claimUrl: string | null;
+  summary: string | null;
 }
 
 export interface CategoryMeta {
@@ -52,18 +52,24 @@ export interface StatusStyle {
 }
 
 export interface Alert {
-  id: number;
+  id: string;
   type: 'expiring' | 'renewal' | 'unused' | 'gap' | 'claim';
   severity: 'warning' | 'info' | 'tip' | 'urgent';
   title: string;
   detail: string;
   date: string;
-  coverageId: number;
+  coverageId: string | null;
   read: boolean;
 }
 
+export interface FamilyMember {
+  id: string;
+  name: string;
+  relation: string;
+}
+
 export interface SearchResult {
-  coverageId: number;
+  policyNo: string;
   relevance: 'high' | 'medium' | 'low';
   explanation: string;
   coordination: string;
@@ -131,4 +137,6 @@ export type ViewId =
   | 'alerts'
   | 'vault'
   | 'add'
+  | 'upload'
+  | 'family'
   | 'account';

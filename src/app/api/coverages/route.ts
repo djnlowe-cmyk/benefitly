@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import prisma from '@/lib/db';
+import { requireUserId } from '@/lib/session';
 
 export async function GET() {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+  const session = await requireUserId();
+  if (!session.ok) return session.response;
 
-  const userId = (session.user as unknown as { id: string }).id;
   const coverages = await prisma.coverage.findMany({
-    where: { userId },
+    where: { userId: session.userId },
     orderBy: { createdAt: 'desc' },
   });
 
-  // Parse JSON fields for the client
   const parsed = coverages.map((c) => ({
     ...c,
     covered: JSON.parse(c.covered),
@@ -23,10 +21,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+  const session = await requireUserId();
+  if (!session.ok) return session.response;
 
-  const userId = (session.user as unknown as { id: string }).id;
   const body = await req.json();
 
   const coverage = await prisma.coverage.create({
@@ -51,7 +48,7 @@ export async function POST(req: NextRequest) {
       summary: body.summary || null,
       confidence: body.confidence ?? null,
       documentId: body.documentId || null,
-      userId,
+      userId: session.userId,
     },
   });
 
@@ -62,18 +59,61 @@ export async function POST(req: NextRequest) {
   }, { status: 201 });
 }
 
-export async function DELETE(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
+export async function PATCH(req: NextRequest) {
+  const session = await requireUserId();
+  if (!session.ok) return session.response;
 
-  const userId = (session.user as unknown as { id: string }).id;
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+
+  const existing = await prisma.coverage.findFirst({ where: { id, userId: session.userId } });
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  const body = await req.json();
+  const data: Record<string, unknown> = {};
+
+  if ('provider' in body) data.provider = body.provider;
+  if ('type' in body) data.type = body.type;
+  if ('category' in body) data.category = body.category;
+  if ('policyNo' in body) data.policyNo = body.policyNo || null;
+  if ('status' in body) data.status = body.status;
+  if ('statusLabel' in body) data.statusLabel = body.statusLabel;
+  if ('covered' in body) data.covered = JSON.stringify(body.covered || []);
+  if ('startDate' in body) data.startDate = body.startDate;
+  if ('endDate' in body) data.endDate = body.endDate;
+  if ('premium' in body) data.premium = body.premium ?? 0;
+  if ('deductible' in body) data.deductible = body.deductible ?? null;
+  if ('oopMax' in body) data.oopMax = body.oopMax ?? null;
+  if ('coverageLimit' in body || 'limit' in body) {
+    data.coverageLimit = body.coverageLimit ?? body.limit ?? null;
+  }
+  if ('coInsurance' in body) data.coInsurance = body.coInsurance ?? null;
+  if ('exclusions' in body) data.exclusions = JSON.stringify(body.exclusions || []);
+  if ('claimPhone' in body) data.claimPhone = body.claimPhone ?? null;
+  if ('claimUrl' in body) data.claimUrl = body.claimUrl ?? null;
+  if ('summary' in body) data.summary = body.summary ?? null;
+  if ('confidence' in body) data.confidence = body.confidence ?? null;
+
+  const updated = await prisma.coverage.update({ where: { id }, data });
+
+  return NextResponse.json({
+    ...updated,
+    covered: JSON.parse(updated.covered),
+    exclusions: JSON.parse(updated.exclusions),
+  });
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await requireUserId();
+  if (!session.ok) return session.response;
+
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
 
   if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-  // Verify ownership
-  const existing = await prisma.coverage.findFirst({ where: { id, userId } });
+  const existing = await prisma.coverage.findFirst({ where: { id, userId: session.userId } });
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   await prisma.coverage.delete({ where: { id } });

@@ -13,6 +13,8 @@ const NAV_ITEMS: { id: ViewId; label: string; icon: string }[] = [
   { id: 'optimiser', label: 'Optimiser', icon: '◎' },
   { id: 'alerts', label: 'Alerts', icon: '●' },
   { id: 'vault', label: 'Documents', icon: '▤' },
+  { id: 'family', label: 'Family', icon: '⚭' },
+  { id: 'upload', label: 'Upload Document', icon: '↑' },
   { id: 'add', label: 'Add Coverage', icon: '+' },
 ];
 
