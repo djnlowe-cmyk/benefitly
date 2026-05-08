@@ -1,10 +1,11 @@
 'use client';
 
 import { Alert } from '@/types/coverage';
+import { formatDate } from '@/lib/format';
 
 interface AlertsViewProps {
   alerts: Alert[];
-  onMarkRead: (id: number) => void;
+  onMarkRead: (id: string) => void;
 }
 
 const SEVERITY_STYLES = {
@@ -35,7 +36,7 @@ export default function AlertsView({ alerts, onMarkRead }: AlertsViewProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="text-sm font-semibold text-gray-900">{alert.title}</div>
-            <div className="text-[11px] text-gray-400 shrink-0">{alert.date}</div>
+            <div className="text-[11px] text-gray-400 shrink-0">{formatDate(alert.date)}</div>
           </div>
           <div className="text-sm text-gray-600 mt-1 leading-relaxed">{alert.detail}</div>
           {!alert.read && (

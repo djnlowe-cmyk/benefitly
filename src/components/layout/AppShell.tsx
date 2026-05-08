@@ -65,8 +65,8 @@ export default function AppShell() {
 
   const unreadAlerts = useMemo(() => alerts.filter((a) => !a.read).length, [alerts]);
 
-  const loadCoverages = useCallback(async () => {
-    setCoverageState('loading');
+  const loadCoverages = useCallback(async (showLoading = true) => {
+    if (showLoading) setCoverageState('loading');
     try {
       const res = await fetch('/api/coverages');
       if (!res.ok) throw new Error(`Failed to load coverages (${res.status})`);
@@ -80,8 +80,8 @@ export default function AppShell() {
     }
   }, []);
 
-  const loadAlerts = useCallback(async () => {
-    setAlertState('loading');
+  const loadAlerts = useCallback(async (showLoading = true) => {
+    if (showLoading) setAlertState('loading');
     try {
       const res = await fetch('/api/alerts');
       if (!res.ok) throw new Error(`Failed to load alerts (${res.status})`);
@@ -95,8 +95,8 @@ export default function AppShell() {
     }
   }, []);
 
-  const loadFamily = useCallback(async () => {
-    setFamilyState('loading');
+  const loadFamily = useCallback(async (showLoading = true) => {
+    if (showLoading) setFamilyState('loading');
     try {
       const res = await fetch('/api/family');
       if (!res.ok) throw new Error(`Failed to load family (${res.status})`);
@@ -111,10 +111,63 @@ export default function AppShell() {
   }, []);
 
   useEffect(() => {
-    loadCoverages();
-    loadAlerts();
-    loadFamily();
-  }, [loadCoverages, loadAlerts, loadFamily]);
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await fetch('/api/coverages');
+        if (cancelled) return;
+        if (!res.ok) throw new Error(`Failed to load coverages (${res.status})`);
+        const data: Coverage[] = await res.json();
+        if (cancelled) return;
+        setCoverages(data);
+        setCoverageError(null);
+        setCoverageState('ready');
+      } catch (e) {
+        if (cancelled) return;
+        setCoverageError(e instanceof Error ? e.message : 'Failed to load coverages');
+        setCoverageState('error');
+      }
+    })();
+
+    void (async () => {
+      try {
+        const res = await fetch('/api/alerts');
+        if (cancelled) return;
+        if (!res.ok) throw new Error(`Failed to load alerts (${res.status})`);
+        const data: Alert[] = await res.json();
+        if (cancelled) return;
+        setAlerts(data);
+        setAlertError(null);
+        setAlertState('ready');
+      } catch (e) {
+        if (cancelled) return;
+        setAlertError(e instanceof Error ? e.message : 'Failed to load alerts');
+        setAlertState('error');
+      }
+    })();
+
+    void (async () => {
+      try {
+        const res = await fetch('/api/family');
+        if (cancelled) return;
+        if (!res.ok) throw new Error(`Failed to load family (${res.status})`);
+        const data: FamilyMember[] = await res.json();
+        if (cancelled) return;
+        setFamily(data);
+        setFamilyError(null);
+        setFamilyState('ready');
+      } catch (e) {
+        if (cancelled) return;
+        setFamilyError(e instanceof Error ? e.message : 'Failed to load family');
+        setFamilyState('error');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const navigate = useCallback((view: ViewId) => {
     setActiveView(view);

@@ -2,6 +2,7 @@
 
 import { Coverage } from '@/types/coverage';
 import { CATEGORIES, STATUS_STYLES } from '@/data/categories';
+import { formatCurrency } from '@/lib/format';
 
 interface CoverageCardProps {
   coverage: Coverage;
@@ -42,13 +43,13 @@ export default function CoverageCard({ coverage, onClick }: CoverageCardProps) {
         <div className="flex gap-4 text-[11px] text-gray-500">
           {coverage.deductible != null && (
             <div>
-              <span className="font-semibold text-gray-700">${coverage.deductible.toLocaleString()}</span>{' '}
-              deductible
+              <span className="font-semibold text-gray-700">{formatCurrency(coverage.deductible)}</span>{' '}
+              excess
             </div>
           )}
           {coverage.premium > 0 && (
             <div>
-              <span className="font-semibold text-gray-700">${coverage.premium}/mo</span>
+              <span className="font-semibold text-gray-700">{formatCurrency(coverage.premium)}/mo</span>
             </div>
           )}
           <div className="ml-auto text-gray-400">{coverage.policyNo}</div>

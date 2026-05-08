@@ -1,183 +1,12 @@
-import { Coverage, Alert, Transaction, Asset, Claim, Aggregator } from '@/types/coverage';
+import { Transaction, Asset, Claim, Aggregator, Coverage, Alert } from '@/types/coverage';
 
-export const SEED_COVERAGES: Coverage[] = [
-  {
-    id: 1, provider: 'Blue Cross Blue Shield', type: 'Health Insurance',
-    category: 'health', policyNo: 'BCBS-2024-88412',
-    status: 'active', statusLabel: 'Active',
-    covered: ['David Lowe', 'Sarah Lowe', 'Emma Lowe'],
-    startDate: '2025-01-01', endDate: '2025-12-31',
-    premium: 624, deductible: 2500, oopMax: 6500,
-    limit: 'Unlimited (in-network)', coInsurance: '80/20 after deductible',
-    exclusions: ['Cosmetic surgery', 'Experimental treatments', 'Out-of-network without referral'],
-    claimPhone: '1-800-555-0101', claimUrl: 'bcbs.com/claims',
-    summary: 'Family PPO plan through employer. Covers medical, prescription, and preventive care.',
-  },
-  {
-    id: 2, provider: 'State Farm', type: 'Auto Insurance',
-    category: 'auto', policyNo: 'SF-AUTO-77234',
-    status: 'active', statusLabel: 'Active',
-    covered: ['2022 Toyota RAV4', '2020 Honda Civic'],
-    startDate: '2025-03-15', endDate: '2026-03-14',
-    premium: 186, deductible: 500, oopMax: null,
-    limit: '100/300/100 Liability, Comprehensive + Collision',
-    coInsurance: null,
-    exclusions: ['Intentional damage', 'Racing', 'Ride-share use (not endorsed)'],
-    claimPhone: '1-800-555-0202', claimUrl: 'statefarm.com/claims',
-    summary: 'Full coverage on both vehicles. Includes roadside assistance and rental reimbursement.',
-  },
-  {
-    id: 3, provider: 'Allstate', type: "Homeowner's Insurance",
-    category: 'home', policyNo: 'ALL-HOME-55198',
-    status: 'active', statusLabel: 'Active',
-    covered: ['742 Evergreen Terrace'],
-    startDate: '2025-06-01', endDate: '2026-05-31',
-    premium: 215, deductible: 1000, oopMax: null,
-    limit: '$450,000 dwelling / $225,000 personal property',
-    coInsurance: null,
-    exclusions: ['Flood', 'Earthquake', 'Mold (unless sudden)', 'Sewer backup (no rider)'],
-    claimPhone: '1-800-555-0303', claimUrl: 'allstate.com/claims',
-    summary: 'HO-3 policy. Covers dwelling, personal property, liability, and additional living expenses.',
-  },
-  {
-    id: 4, provider: 'Chase Sapphire Reserve', type: 'Credit Card Benefits',
-    category: 'creditcard', policyNo: 'VISA •••• 4821',
-    status: 'active', statusLabel: 'Active',
-    covered: ['All purchases on card'],
-    startDate: '2024-08-01', endDate: 'Ongoing',
-    premium: 550, deductible: 0, oopMax: null,
-    limit: '$10,000 per claim / $50,000 per year (purchase protection); 120 days',
-    coInsurance: null,
-    exclusions: ['Used items', 'Motorised vehicles', 'Real estate', 'Cash/securities'],
-    claimPhone: '1-800-555-0404', claimUrl: 'chase.com/card-benefits',
-    summary: 'Purchase protection, extended warranty (+1 year), trip cancellation, trip delay, rental car CDW, baggage delay, lost luggage.',
-  },
-  {
-    id: 5, provider: 'Apple', type: 'AppleCare+',
-    category: 'warranty', policyNo: 'AC-MBP-2024-7791',
-    status: 'expiring', statusLabel: 'Expiring Soon',
-    covered: ['MacBook Pro 16" (2024)'],
-    startDate: '2024-03-10', endDate: '2026-03-10',
-    premium: 399, deductible: 99, oopMax: null,
-    limit: '2 incidents of accidental damage per year',
-    coInsurance: null,
-    exclusions: ['Cosmetic damage only', 'Unauthorised modifications', 'Theft/loss (no add-on)'],
-    claimPhone: '1-800-555-0505', claimUrl: 'support.apple.com',
-    summary: 'Extended warranty and accidental damage coverage for MacBook Pro. Expires in 8 days.',
-  },
-  {
-    id: 6, provider: 'Allianz', type: 'Travel Insurance',
-    category: 'travel', policyNo: 'ALZ-TRIP-90321',
-    status: 'active', statusLabel: 'Active',
-    covered: ['David Lowe', 'Sarah Lowe'],
-    startDate: '2026-04-01', endDate: '2026-04-15',
-    premium: 189, deductible: 250, oopMax: null,
-    limit: '$50,000 medical / $5,000 trip cancellation / $1,500 baggage',
-    coInsurance: null,
-    exclusions: ['Pre-existing conditions (60-day lookback)', 'Extreme sports', 'Travel to sanctioned countries'],
-    claimPhone: '1-800-555-0606', claimUrl: 'allianzassistance.com/claims',
-    summary: 'Single-trip policy for Italy vacation. Covers medical, cancellation, baggage, and delay.',
-  },
-  {
-    id: 7, provider: 'Samsung', type: 'Manufacturer Warranty',
-    category: 'warranty', policyNo: 'SAM-WTY-RF28-8842',
-    status: 'active', statusLabel: 'Active',
-    covered: ['Samsung RF28 Refrigerator'],
-    startDate: '2024-11-15', endDate: '2025-11-14',
-    premium: 0, deductible: 0, oopMax: null,
-    limit: 'Parts and labour for manufacturing defects',
-    coInsurance: null,
-    exclusions: ['Cosmetic damage', 'Power surges', 'Improper installation', 'Commercial use'],
-    claimPhone: '1-800-555-0707', claimUrl: 'samsung.com/support',
-    summary: '1-year standard manufacturer warranty. Compressor has separate 10-year warranty.',
-  },
-  {
-    id: 8, provider: 'Hartford', type: 'General Liability (Business)',
-    category: 'business', policyNo: 'HFD-GL-2025-1142',
-    status: 'active', statusLabel: 'Active',
-    covered: ['Lowe Digital LLC'],
-    startDate: '2025-01-01', endDate: '2026-01-01',
-    premium: 412, deductible: 1000, oopMax: null,
-    limit: '$1M per occurrence / $2M aggregate',
-    coInsurance: null,
-    exclusions: ['Professional services errors (see E&O)', 'Auto liability', "Workers' comp claims", 'Intentional acts'],
-    claimPhone: '1-800-555-0808', claimUrl: 'thehartford.com/claims',
-    summary: 'Commercial general liability for the digital agency. Covers bodily injury, property damage, and advertising injury.',
-  },
-  {
-    id: 9, provider: 'Delta Dental', type: 'Dental Insurance',
-    category: 'dental', policyNo: 'DD-FAM-2025-3318',
-    status: 'active', statusLabel: 'Active',
-    covered: ['David Lowe', 'Sarah Lowe', 'Emma Lowe'],
-    startDate: '2025-01-01', endDate: '2025-12-31',
-    premium: 62, deductible: 50, oopMax: null,
-    limit: '$1,500/person/year (preventive 100%, basic 80%, major 50%)',
-    coInsurance: '50% for major procedures (crowns, bridges, dentures)',
-    exclusions: ['Cosmetic dentistry', 'Orthodontics (adult)', 'Implants over $2,000'],
-    claimPhone: '1-800-555-0909', claimUrl: 'deltadental.com/claims',
-    summary: 'Family dental PPO through employer. Preventive care (cleanings, X-rays) covered at 100%. Two cleanings per year.',
-  },
-  {
-    id: 10, provider: 'VSP Vision Care', type: 'Vision Insurance',
-    category: 'vision', policyNo: 'VSP-2025-7742',
-    status: 'active', statusLabel: 'Active',
-    covered: ['David Lowe', 'Sarah Lowe', 'Emma Lowe'],
-    startDate: '2025-01-01', endDate: '2025-12-31',
-    premium: 24, deductible: 15, oopMax: null,
-    limit: '$200 allowance for frames / $130 for contacts annually',
-    coInsurance: '$15 co-pay exam, $25 co-pay lenses',
-    exclusions: ['LASIK (partially covered — see plan details)', 'Non-prescription sunglasses', 'Second pair within 12 months'],
-    claimPhone: '1-800-555-1010', claimUrl: 'vsp.com/claims',
-    summary: 'Family vision plan through employer. Annual eye exam, lenses, frames or contacts allowance.',
-  },
-  {
-    id: 11, provider: 'MetLife', type: 'Life Insurance',
-    category: 'life', policyNo: 'ML-LIFE-2025-9201',
-    status: 'active', statusLabel: 'Active',
-    covered: ['David Lowe'],
-    startDate: '2023-06-01', endDate: '2033-06-01',
-    premium: 48, deductible: 0, oopMax: null,
-    limit: '$500,000 death benefit (10-year level term)',
-    coInsurance: null,
-    exclusions: ['Suicide within first 2 years', 'Death during commission of a felony', 'War or military action'],
-    claimPhone: '1-800-555-1111', claimUrl: 'metlife.com/claims',
-    summary: '10-year level term life policy. $500K death benefit. Beneficiary: Sarah Lowe.',
-  },
-  {
-    id: 12, provider: 'Unum', type: 'Disability Insurance',
-    category: 'disability', policyNo: 'UNM-STD-2025-4410',
-    status: 'active', statusLabel: 'Active',
-    covered: ['David Lowe'],
-    startDate: '2025-01-01', endDate: '2025-12-31',
-    premium: 0, deductible: 0, oopMax: null,
-    limit: '60% of salary, up to $5,000/month (short-term: 90 days; long-term: to age 65)',
-    coInsurance: null,
-    exclusions: ['Self-inflicted injuries', 'Pre-existing conditions (12-month lookback)', 'Injuries during commission of a crime'],
-    claimPhone: '1-800-555-1212', claimUrl: 'unum.com/claims',
-    summary: 'Employer-provided short-term and long-term disability. 14-day elimination period for STD, 90-day for LTD.',
-  },
-  {
-    id: 13, provider: 'Nationwide', type: 'Pet Insurance',
-    category: 'pet', policyNo: 'NW-PET-2025-6633',
-    status: 'active', statusLabel: 'Active',
-    covered: ['Biscuit (Golden Retriever, 4 yrs)'],
-    startDate: '2025-02-01', endDate: '2026-02-01',
-    premium: 52, deductible: 250, oopMax: null,
-    limit: '$10,000/year (accidents & illness), 70% reimbursement',
-    coInsurance: '70/30 after deductible',
-    exclusions: ['Pre-existing conditions', 'Breeding costs', 'Cosmetic procedures', 'Dental cleaning (no rider)'],
-    claimPhone: '1-800-555-1313', claimUrl: 'petinsurance.com/claims',
-    summary: 'Accident and illness coverage for Biscuit. Covers vet visits, surgery, prescriptions, and diagnostics.',
-  },
-];
-
-export const SEED_ALERTS: Alert[] = [
-  { id: 1, type: 'expiring', severity: 'warning', title: 'AppleCare+ expiring in 8 days', detail: 'MacBook Pro 16" coverage ends 10 March 2026. Consider renewing or purchasing new coverage.', date: '2026-03-02', coverageId: 5, read: false },
-  { id: 2, type: 'renewal', severity: 'info', title: 'Auto insurance renewal coming up', detail: 'State Farm policy renews 14 March 2026. Review terms and compare rates before renewal.', date: '2026-02-14', coverageId: 2, read: false },
-  { id: 3, type: 'unused', severity: 'tip', title: 'Unused benefit: Trip delay coverage', detail: 'Your Chase Sapphire Reserve includes $500/day trip delay coverage. Your Italy trip starts 1 April — remember to file if flights are delayed 6+ hours.', date: '2026-03-01', coverageId: 4, read: true },
-  { id: 4, type: 'gap', severity: 'warning', title: 'No flood insurance detected', detail: "Your homeowner's policy excludes flood damage. Consider a separate flood policy, especially if you're in a FEMA-designated flood zone.", date: '2026-01-15', coverageId: 3, read: true },
-  { id: 5, type: 'unused', severity: 'tip', title: 'Extended warranty available via credit card', detail: "Your Samsung refrigerator warranty expires Nov 2025, but your Chase Sapphire extends manufacturer warranties by 1 year on purchases made with the card. Was this purchased on the card?", date: '2026-02-20', coverageId: 7, read: true },
-];
+// Coverages and alerts are now fetched from /api/coverages and /api/alerts.
+// Transactions / assets / claims still rely on local seed until backing API
+// routes exist.
+// SEED_COVERAGES and SEED_ALERTS are kept as empty arrays so AppShell's
+// initial useState() call has a stable typed value before the fetch resolves.
+export const SEED_COVERAGES: Coverage[] = [];
+export const SEED_ALERTS: Alert[] = [];
 
 export const SEED_TRANSACTIONS: Transaction[] = [
   { id: 1, date: '2026-03-15', merchant: 'Apple Store', amount: 2499, card: 'Chase Sapphire Reserve', cardType: 'credit', category: 'Electronics', coverageStatus: 'covered', benefits: ['120-day purchase protection ($10K)', 'Extended warranty (+1 year)'], missedOpp: null },
@@ -205,27 +34,30 @@ export const SEED_CLAIMS: Claim[] = [
   { id: 3, incident: 'Hail damage to RAV4 hood', date: '2025-12-05', provider: 'State Farm', category: 'auto', status: 'paid', step: 5, totalSteps: 5, steps: ['Log incident', 'File police report', 'Submit photos', 'Adjuster visit', 'Receive payment'], nextAction: 'Claim resolved. $1,847 paid after $500 deductible.', deadline: null },
 ];
 
-export const SEARCH_SCENARIOS: Record<string, { coverageId: number; relevance: 'high' | 'medium' | 'low'; explanation: string; coordination: string }[]> = {
+export const SEARCH_SCENARIOS: Record<
+  string,
+  { policyNo: string; relevance: 'high' | 'medium' | 'low'; explanation: string; coordination: string }[]
+> = {
   'laptop screen cracked': [
-    { coverageId: 5, relevance: 'high', explanation: 'AppleCare+ covers accidental damage. $99 service fee per incident. File at support.apple.com or any Apple Store.', coordination: 'Primary coverage — file here first.' },
-    { coverageId: 4, relevance: 'medium', explanation: 'Chase Sapphire purchase protection covers damage within 120 days of purchase. If purchased on this card and within the window, up to $10,000.', coordination: "Secondary — use if AppleCare+ doesn't fully cover or has expired." },
+    { policyNo: 'AC-MBP-2024-7791', relevance: 'high', explanation: 'AppleCare+ covers accidental damage. $99 service fee per incident. File at support.apple.com or any Apple Store.', coordination: 'Primary coverage — file here first.' },
+    { policyNo: 'VISA •••• 4821', relevance: 'medium', explanation: 'Chase Sapphire purchase protection covers damage within 120 days of purchase. If purchased on this card and within the window, up to $10,000.', coordination: "Secondary — use if AppleCare+ doesn't fully cover or has expired." },
   ],
   'flight cancelled': [
-    { coverageId: 6, relevance: 'high', explanation: 'Allianz trip cancellation covers up to $5,000 for covered reasons (illness, severe weather, airline bankruptcy). $250 deductible.', coordination: 'Primary for the Italy trip — file here first.' },
-    { coverageId: 4, relevance: 'high', explanation: 'Chase Sapphire trip cancellation covers up to $10,000 per person if the trip was purchased on the card. Covers illness, severe weather, jury duty, and more.', coordination: 'Use alongside or instead of Allianz depending on which card was used to book.' },
+    { policyNo: 'ALZ-TRIP-90321', relevance: 'high', explanation: 'Allianz trip cancellation covers up to $5,000 for covered reasons (illness, severe weather, airline bankruptcy). $250 deductible.', coordination: 'Primary for the Italy trip — file here first.' },
+    { policyNo: 'VISA •••• 4821', relevance: 'high', explanation: 'Chase Sapphire trip cancellation covers up to $10,000 per person if the trip was purchased on the card. Covers illness, severe weather, jury duty, and more.', coordination: 'Use alongside or instead of Allianz depending on which card was used to book.' },
   ],
   'pipe burst': [
-    { coverageId: 3, relevance: 'high', explanation: "Allstate homeowner's covers sudden water damage from burst pipes. $1,000 deductible. Covers structural repair and damaged personal property.", coordination: 'Primary — file immediately and document damage with photos.' },
+    { policyNo: 'ALL-HOME-55198', relevance: 'high', explanation: "Allstate homeowner's covers sudden water damage from burst pipes. $1,000 deductible. Covers structural repair and damaged personal property.", coordination: 'Primary — file immediately and document damage with photos.' },
   ],
   'client threatening lawsuit': [
-    { coverageId: 8, relevance: 'high', explanation: 'Hartford general liability covers advertising injury and some client claims. $1M per occurrence. $1,000 deductible.', coordination: 'Notify Hartford immediately — most policies require prompt notice.' },
+    { policyNo: 'HFD-GL-2025-1142', relevance: 'high', explanation: 'Hartford general liability covers advertising injury and some client claims. $1M per occurrence. $1,000 deductible.', coordination: 'Notify Hartford immediately — most policies require prompt notice.' },
   ],
   'knee mri': [
-    { coverageId: 1, relevance: 'high', explanation: 'BCBS PPO covers diagnostic imaging including MRI. Subject to deductible ($2,500) and 80/20 co-insurance. Pre-authorisation may be required.', coordination: 'Get a referral from your PCP and confirm pre-auth with BCBS before scheduling.' },
+    { policyNo: 'BCBS-2024-88412', relevance: 'high', explanation: 'BCBS PPO covers diagnostic imaging including MRI. Subject to deductible ($2,500) and 80/20 co-insurance. Pre-authorisation may be required.', coordination: 'Get a referral from your PCP and confirm pre-auth with BCBS before scheduling.' },
   ],
   'car accident': [
-    { coverageId: 2, relevance: 'high', explanation: "State Farm covers collision damage. $500 deductible. Also covers liability if you're at fault (100/300/100). Rental reimbursement included.", coordination: "File with State Farm. If the other driver is at fault, their liability covers your damage first." },
-    { coverageId: 1, relevance: 'medium', explanation: 'BCBS covers medical treatment from the accident after auto medical payments are exhausted.', coordination: 'Secondary to auto medical payments — file health claims after auto coverage is used.' },
+    { policyNo: 'SF-AUTO-77234', relevance: 'high', explanation: "State Farm covers collision damage. $500 deductible. Also covers liability if you're at fault (100/300/100). Rental reimbursement included.", coordination: "File with State Farm. If the other driver is at fault, their liability covers your damage first." },
+    { policyNo: 'BCBS-2024-88412', relevance: 'medium', explanation: 'BCBS covers medical treatment from the accident after auto medical payments are exhausted.', coordination: 'Secondary to auto medical payments — file health claims after auto coverage is used.' },
   ],
 };
 

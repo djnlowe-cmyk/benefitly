@@ -1,6 +1,7 @@
 'use client';
 
 import { Claim } from '@/types/coverage';
+import { formatDate } from '@/lib/format';
 
 interface ClaimsViewProps {
   claims: Claim[];
@@ -34,7 +35,7 @@ export default function ClaimsView({ claims, isMobile = false }: ClaimsViewProps
                 <div>
                   <div className="text-sm font-semibold text-gray-900">{claim.incident}</div>
                   <div className="text-xs text-gray-500">
-                    {claim.date} · {claim.provider}
+                    {formatDate(claim.date)} · {claim.provider}
                   </div>
                 </div>
                 <span
@@ -83,7 +84,7 @@ export default function ClaimsView({ claims, isMobile = false }: ClaimsViewProps
               </div>
 
               {claim.deadline && (
-                <div className="text-xs text-amber-700 mt-2">Deadline: {claim.deadline}</div>
+                <div className="text-xs text-amber-700 mt-2">Deadline: {formatDate(claim.deadline)}</div>
               )}
             </div>
           );

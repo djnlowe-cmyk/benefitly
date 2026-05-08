@@ -1,6 +1,7 @@
 'use client';
 
 import { Transaction } from '@/types/coverage';
+import { formatCurrency, formatDate } from '@/lib/format';
 
 interface TransactionsViewProps {
   transactions: Transaction[];
@@ -30,11 +31,11 @@ export default function TransactionsView({ transactions, isMobile = false }: Tra
                 <div>
                   <div className="text-sm font-semibold text-gray-900">{t.merchant}</div>
                   <div className="text-xs text-gray-500">
-                    {t.date} · {t.card}
+                    {formatDate(t.date)} · {t.card}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-bold text-gray-900">${t.amount.toLocaleString()}</div>
+                  <div className="text-sm font-bold text-gray-900">{formatCurrency(t.amount)}</div>
                   <span
                     className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
                     style={{ color: sc.color, background: sc.bg }}

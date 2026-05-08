@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { Coverage, CoverageCategory } from '@/types/coverage';
 import { CATEGORIES } from '@/data/categories';
+import { formatCurrency } from '@/lib/format';
 import CoverageCard from '@/components/coverage/CoverageCard';
 
 interface DashboardViewProps {
@@ -28,7 +29,7 @@ export default function DashboardView({ coverages, onSelectCoverage, isMobile = 
     { label: 'Total Sources', value: String(coverages.length), sub: 'across all categories' },
     { label: 'Active', value: String(activeCount), sub: 'currently in force', color: '#059669' },
     { label: 'Expiring Soon', value: String(expiringCount), sub: 'action needed', color: '#d97706' },
-    { label: 'Monthly Premiums', value: `$${totalPremium.toLocaleString()}`, sub: 'combined total' },
+    { label: 'Monthly Premiums', value: formatCurrency(totalPremium), sub: 'combined total' },
   ];
 
   return (

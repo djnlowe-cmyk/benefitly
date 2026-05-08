@@ -1,6 +1,7 @@
 'use client';
 
 import { Asset } from '@/types/coverage';
+import { formatCurrency, formatDate } from '@/lib/format';
 
 interface AssetsViewProps {
   assets: Asset[];
@@ -22,7 +23,7 @@ export default function AssetsView({ assets, isMobile = false }: AssetsViewProps
       <div className="mb-7">
         <h1 className="text-2xl font-bold text-gray-900 m-0 mb-1">Asset Registry</h1>
         <p className="text-sm text-gray-500 m-0">
-          {assets.length} assets tracked · ${totalValue.toLocaleString()} total value
+          {assets.length} assets tracked · {formatCurrency(totalValue)} total value
           {highRisk > 0 && ` · ${highRisk} need attention`}
         </p>
       </div>
@@ -41,7 +42,7 @@ export default function AssetsView({ assets, isMobile = false }: AssetsViewProps
                   <div className="text-xs text-gray-500">{a.category}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-bold text-gray-900">${a.value.toLocaleString()}</div>
+                  <div className="text-sm font-bold text-gray-900">{formatCurrency(a.value)}</div>
                   <span
                     className="text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize"
                     style={{ color: risk.color, background: risk.bg }}
@@ -53,7 +54,7 @@ export default function AssetsView({ assets, isMobile = false }: AssetsViewProps
 
               <div className="text-xs text-gray-500 mb-2">
                 {a.photos} photo{a.photos !== 1 ? 's' : ''} on file
-                {a.lastPhotoUpdate && ` · Last updated ${a.lastPhotoUpdate}`}
+                {a.lastPhotoUpdate && ` · Last updated ${formatDate(a.lastPhotoUpdate)}`}
               </div>
 
               <div className="flex flex-wrap gap-1 mb-2">

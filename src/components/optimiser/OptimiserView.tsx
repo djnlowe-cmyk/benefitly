@@ -1,6 +1,7 @@
 'use client';
 
 import { Coverage } from '@/types/coverage';
+import { formatCurrency } from '@/lib/format';
 
 interface OptimiserViewProps {
   coverages: Coverage[];
@@ -13,10 +14,10 @@ export default function OptimiserView({ coverages, isMobile = false }: Optimiser
   // Mock optimiser data
   const score = 72;
   const recommendations = [
-    { type: 'redundancy', title: 'Potential overlap: travel coverage', detail: 'Your Allianz travel policy and Chase Sapphire Reserve both cover trip cancellation. If you always book travel on the Chase card, the standalone policy may be redundant — saving $189/trip.', savings: 189, priority: 'medium' as const },
-    { type: 'gap', title: 'No flood insurance', detail: "Your Allstate homeowner's policy excludes flood. If your property is in a FEMA flood zone, consider a separate flood policy.", savings: 0, priority: 'high' as const },
-    { type: 'payment', title: 'Use Chase Sapphire for electronics', detail: 'You spent $1,299 on electronics via debit last month. Switching to your Chase Sapphire would add purchase protection and extended warranty at no extra cost.', savings: 0, priority: 'medium' as const },
-    { type: 'benefit', title: 'Unused: rental car CDW', detail: "Your Chase Sapphire Reserve includes primary rental car CDW. You don't need to buy the rental company's coverage — decline it next time and save $15–$30/day.", savings: 200, priority: 'low' as const },
+    { type: 'redundancy', title: 'Potential overlap: travel coverage', detail: 'Your Aviva travel policy and Barclaycard Avios Plus both cover trip cancellation. If you always book travel on the Barclaycard, the standalone policy may be redundant — saving £149/trip.', savings: 149, priority: 'medium' as const },
+    { type: 'gap', title: 'No flood insurance', detail: "Your Aviva home policy excludes escape-of-water from groundwater flooding. If your property is in an Environment Agency flood-risk zone, consider a separate flood add-on or specialist policy.", savings: 0, priority: 'high' as const },
+    { type: 'payment', title: 'Use Section 75 protection on credit', detail: 'You spent £1,099 on electronics via debit last month. Paying with a credit card on purchases over £100 triggers Section 75 protection — at no extra cost.', savings: 0, priority: 'medium' as const },
+    { type: 'benefit', title: 'Unused: rental car CDW', detail: "Your Barclaycard Avios Plus includes primary rental car CDW. You don't need to buy the rental company's collision damage waiver — decline it next time and save £12–£25/day.", savings: 160, priority: 'low' as const },
   ];
 
   const PRIORITY_STYLES = {
@@ -48,7 +49,7 @@ export default function OptimiserView({ coverages, isMobile = false }: Optimiser
             }}
           />
         </div>
-        <div className="text-xs text-gray-400 mt-2">${totalPremium.toLocaleString()}/mo in premiums across {coverages.length} sources</div>
+        <div className="text-xs text-gray-400 mt-2">{formatCurrency(totalPremium)}/mo in premiums across {coverages.length} sources</div>
       </div>
 
       {/* Recommendations */}
@@ -66,7 +67,7 @@ export default function OptimiserView({ coverages, isMobile = false }: Optimiser
               </div>
               <div className="text-sm text-gray-600 leading-relaxed">{r.detail}</div>
               {r.savings > 0 && (
-                <div className="text-xs text-green-700 mt-2 font-medium">Potential savings: ${r.savings}/year</div>
+                <div className="text-xs text-green-700 mt-2 font-medium">Potential savings: {formatCurrency(r.savings)}/year</div>
               )}
             </div>
           );

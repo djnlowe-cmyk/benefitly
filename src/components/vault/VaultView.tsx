@@ -2,6 +2,7 @@
 
 import { Coverage } from '@/types/coverage';
 import { CATEGORIES } from '@/data/categories';
+import { formatDate } from '@/lib/format';
 
 interface VaultViewProps {
   coverages: Coverage[];
@@ -33,7 +34,7 @@ export default function VaultView({ coverages, isMobile = false }: VaultViewProp
                 <div className="text-sm font-semibold text-gray-900">{c.provider}</div>
                 <div className="text-xs text-gray-500">{c.type} · {c.policyNo}</div>
               </div>
-              <div className="text-xs text-gray-400">{c.startDate}</div>
+              <div className="text-xs text-gray-400">{formatDate(c.startDate)}</div>
               <button className="text-xs text-blue-600 bg-transparent border-none cursor-pointer p-0 hover:underline shrink-0">
                 View
               </button>

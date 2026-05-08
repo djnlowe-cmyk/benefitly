@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Coverage, SearchResult } from '@/types/coverage';
 import { CATEGORIES, STATUS_STYLES } from '@/data/categories';
 import { SEARCH_SCENARIOS } from '@/data/seed';
@@ -10,40 +10,55 @@ interface SearchViewProps {
   isMobile?: boolean;
 }
 
-export default function SearchView({ coverages, isMobile = false }: SearchViewProps) {
+type ScenarioEntry = {
+  policyNo: string;
+  relevance: 'high' | 'medium' | 'low';
+  explanation: string;
+  coordination: string;
+};
+
+function findScenarioMatch(query: string): ScenarioEntry[] | null {
+  const q = query.toLowerCase().trim();
+  if (!q) return null;
+  const words = q.split(/\s+/);
+  let bestMatch: ScenarioEntry[] | null = null;
+  let bestScore = 0;
+  Object.entries(SEARCH_SCENARIOS).forEach(([key, val]) => {
+    const keyWords = key.split(/\s+/);
+    const score = words.filter((w) => keyWords.some((kw) => kw.includes(w) || w.includes(kw))).length;
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = val;
+    }
+  });
+  return bestScore > 0 ? bestMatch : null;
+}
+
+export default function SearchView({ coverages }: SearchViewProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<(SearchResult & { coverage?: Coverage })[] | null>(null);
   const [searched, setSearched] = useState(false);
 
-  const doSearch = () => {
-    const q = query.toLowerCase().trim();
-    if (!q) return;
-    setSearched(true);
-
-    type ScenarioEntry = { coverageId: number; relevance: 'high' | 'medium' | 'low'; explanation: string; coordination: string };
-    let bestMatch: ScenarioEntry[] | null = null;
-    let bestScore = 0;
-    Object.entries(SEARCH_SCENARIOS).forEach(([key, val]) => {
-      const words = q.split(/\s+/);
-      const keyWords = key.split(/\s+/);
-      const score = words.filter((w) => keyWords.some((kw) => kw.includes(w) || w.includes(kw))).length;
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = val;
+  const runSearch = useCallback(
+    (raw: string) => {
+      setSearched(true);
+      const match = findScenarioMatch(raw);
+      if (!match) {
+        setResults([]);
+        return;
       }
-    });
-
-    if (bestMatch && bestScore > 0) {
       setResults(
-        (bestMatch as ScenarioEntry[]).map((r) => ({
-          ...r,
-          coverage: coverages.find((c) => c.id === r.coverageId),
+        match.map((r) => ({
+          policyNo: r.policyNo,
+          relevance: r.relevance,
+          explanation: r.explanation,
+          coordination: r.coordination,
+          coverage: coverages.find((c) => c.policyNo === r.policyNo),
         }))
       );
-    } else {
-      setResults([]);
-    }
-  };
+    },
+    [coverages]
+  );
 
   const suggestions = [
     'My laptop screen cracked',
@@ -69,12 +84,12 @@ export default function SearchView({ coverages, isMobile = false }: SearchViewPr
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && doSearch()}
+          onKeyDown={(e) => e.key === 'Enter' && runSearch(query)}
           placeholder="e.g. My laptop screen cracked, flight cancelled, pipe burst..."
           className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         <button
-          onClick={doSearch}
+          onClick={() => runSearch(query)}
           className="px-6 py-3 bg-gray-900 text-white border-none rounded-lg text-sm font-semibold cursor-pointer hover:bg-gray-800"
         >
           Search
@@ -91,35 +106,7 @@ export default function SearchView({ coverages, isMobile = false }: SearchViewPr
                 key={s}
                 onClick={() => {
                   setQuery(s);
-                  setTimeout(() => {
-                    setQuery(s);
-                    const q = s.toLowerCase().trim();
-                    setSearched(true);
-                    type ScenarioEntry2 = { coverageId: number; relevance: 'high' | 'medium' | 'low'; explanation: string; coordination: string };
-                    let bestMatch: ScenarioEntry2[] | null = null;
-                    let bestScore = 0;
-                    Object.entries(SEARCH_SCENARIOS).forEach(([key, val]) => {
-                      const words = q.split(/\s+/);
-                      const keyWords = key.split(/\s+/);
-                      const score = words.filter((w) =>
-                        keyWords.some((kw) => kw.includes(w) || w.includes(kw))
-                      ).length;
-                      if (score > bestScore) {
-                        bestScore = score;
-                        bestMatch = val;
-                      }
-                    });
-                    if (bestMatch && bestScore > 0) {
-                      setResults(
-                        (bestMatch as ScenarioEntry2[]).map((r) => ({
-                          ...r,
-                          coverage: coverages.find((c) => c.id === r.coverageId),
-                        }))
-                      );
-                    } else {
-                      setResults([]);
-                    }
-                  }, 0);
+                  runSearch(s);
                 }}
                 className="px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-full text-xs text-gray-700 cursor-pointer hover:bg-gray-200"
               >
@@ -145,7 +132,21 @@ export default function SearchView({ coverages, isMobile = false }: SearchViewPr
                 {results.length} coverage source{results.length !== 1 ? 's' : ''} found:
               </div>
               {results.map((r, i) => {
-                if (!r.coverage) return null;
+                if (!r.coverage) {
+                  return (
+                    <div
+                      key={i}
+                      className="bg-white border border-gray-200 rounded-lg p-5 text-sm text-gray-600"
+                      style={{ borderLeft: '4px solid #9ca3af' }}
+                    >
+                      <div className="font-semibold text-gray-900 mb-1">
+                        Suggested coverage not in your dashboard
+                      </div>
+                      <div className="text-xs text-gray-500 mb-2">Reference policy: {r.policyNo}</div>
+                      <div className="leading-relaxed">{r.explanation}</div>
+                    </div>
+                  );
+                }
                 const cat = CATEGORIES[r.coverage.category];
                 const st = STATUS_STYLES[r.coverage.status];
                 return (

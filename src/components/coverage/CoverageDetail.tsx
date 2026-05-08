@@ -2,11 +2,12 @@
 
 import { Coverage } from '@/types/coverage';
 import { CATEGORIES, STATUS_STYLES } from '@/data/categories';
+import { formatCurrency, formatDate } from '@/lib/format';
 
 interface CoverageDetailProps {
   coverage: Coverage;
   onBack: () => void;
-  onDelete?: (id: number) => void;
+  onDelete?: (id: string) => void;
   isMobile?: boolean;
 }
 
@@ -68,19 +69,19 @@ export default function CoverageDetail({ coverage, onBack, onDelete, isMobile = 
                 Policy Details
               </h3>
               <Field label="Policy Number" value={coverage.policyNo} />
-              <Field label="Effective" value={`${coverage.startDate} → ${coverage.endDate}`} />
-              <Field label="Coverage Limit" value={coverage.limit} />
+              <Field label="Effective" value={`${formatDate(coverage.startDate)} → ${coverage.endDate === 'Ongoing' ? 'Ongoing' : formatDate(coverage.endDate)}`} />
+              <Field label="Coverage Limit" value={coverage.coverageLimit} />
               <Field
-                label="Deductible"
-                value={coverage.deductible != null ? `$${coverage.deductible.toLocaleString()}` : undefined}
+                label="Excess"
+                value={coverage.deductible != null ? formatCurrency(coverage.deductible) : undefined}
               />
               {coverage.oopMax && (
-                <Field label="Out-of-Pocket Max" value={`$${coverage.oopMax.toLocaleString()}`} />
+                <Field label="Annual Limit" value={formatCurrency(coverage.oopMax)} />
               )}
               {coverage.coInsurance && <Field label="Co-Insurance" value={coverage.coInsurance} />}
               <Field
                 label="Monthly Premium"
-                value={coverage.premium > 0 ? `$${coverage.premium}/month` : 'Included'}
+                value={coverage.premium > 0 ? `${formatCurrency(coverage.premium)}/month` : 'Included'}
               />
             </div>
             <div className={isMobile ? 'mt-5' : ''}>
