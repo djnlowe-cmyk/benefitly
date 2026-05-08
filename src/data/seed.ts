@@ -34,33 +34,6 @@ export const SEED_CLAIMS: Claim[] = [
   { id: 3, incident: 'Hail damage to RAV4 bonnet', date: '2025-12-05', provider: 'Direct Line', category: 'auto', status: 'paid', step: 5, totalSteps: 5, steps: ['Log incident', 'Report to police if required', 'Submit photos', 'Loss adjuster visit', 'Receive settlement'], nextAction: 'Claim resolved. £1,420 paid after £350 excess.', deadline: null },
 ];
 
-export const SEARCH_SCENARIOS: Record<
-  string,
-  { policyNo: string; relevance: 'high' | 'medium' | 'low'; explanation: string; coordination: string }[]
-> = {
-  'laptop screen cracked': [
-    { policyNo: 'AC-MBP-2024-7791', relevance: 'high', explanation: 'AppleCare+ covers accidental damage. £79 service fee per incident. Book a Genius Bar appointment or send to Apple Repair Centre.', coordination: 'Primary cover — file here first.' },
-    { policyNo: 'BARCLAY-AVIOS-4821', relevance: 'medium', explanation: 'Barclaycard purchase protection covers damage within 120 days of purchase if bought on the card. Up to £2,500 per claim. Section 75 also gives joint liability with the retailer for purchases over £100.', coordination: "Secondary — use if AppleCare+ has expired or you need cover above its £79 service fee." },
-  ],
-  'flight cancelled': [
-    { policyNo: 'AVV-TRIP-90321', relevance: 'high', explanation: 'Aviva travel insurance covers cancellation up to £5,000 for covered reasons (illness, severe weather, airline bankruptcy). £150 excess. File alongside any EU261/UK261 claim direct with the airline.', coordination: 'Primary for the Italy trip — file here first; airline compensation is separate and additive.' },
-    { policyNo: 'BARCLAY-AVIOS-4821', relevance: 'high', explanation: 'Barclaycard Avios Plus trip cancellation cover pays out up to £10,000 per person if the trip was booked on the card. Covers illness, severe weather, jury service, and more. Section 75 may also apply if the airline becomes insolvent.', coordination: 'Use alongside or instead of Aviva depending on which card was used to book.' },
-  ],
-  'pipe burst': [
-    { policyNo: 'AVV-HOME-55198', relevance: 'high', explanation: "Aviva home buildings & contents covers sudden escape of water from burst pipes. £250 excess. Covers structural repair, drying-out costs, and damaged contents. Trace-and-access cover included.", coordination: 'Primary — call the 24-hour claims line and document damage with photos before drying-out begins.' },
-  ],
-  'client threatening lawsuit': [
-    { policyNo: 'HISCOX-GL-2025-1142', relevance: 'high', explanation: 'Hiscox business insurance covers professional indemnity and public liability claims. £2M per occurrence. £500 excess. Covers legal defence costs.', coordination: 'Notify Hiscox immediately — most policies require prompt notice and refusal to admit liability.' },
-  ],
-  'knee mri': [
-    { policyNo: 'BUPA-2024-88412', relevance: 'high', explanation: 'Bupa private medical covers diagnostic imaging including MRI subject to your annual excess (£250) and any pre-authorisation requirements. NHS referral is the alternative free pathway, typically with a longer wait.', coordination: 'Decision: NHS referral (free, slower) vs Bupa pathway (excess applies, faster). Confirm pre-auth with Bupa before booking privately.' },
-  ],
-  'car accident': [
-    { policyNo: 'DL-AUTO-77234', relevance: 'high', explanation: "Direct Line fully comprehensive motor covers accidental damage. £350 excess. Also covers third-party injury and damage. Courtesy car included.", coordination: "File with Direct Line. If the other driver is at fault, their insurer's liability cover settles your damage and you can reclaim your excess." },
-    { policyNo: 'BUPA-2024-88412', relevance: 'medium', explanation: 'Bupa covers medical treatment after the NHS pathway if you want faster private care. NHS A&E is free at point of use for accident treatment.', coordination: 'NHS A&E first for emergency care. Bupa pathway optional for follow-up physio / specialist.' },
-  ],
-};
-
 export const AGGREGATORS: Aggregator[] = [
   { id: 'confused', name: 'Confused.com', url: 'https://www.confused.com', color: '#e11d48', bg: '#fff1f2', categories: ['auto', 'home', 'travel', 'life', 'pet'], loggedIn: true },
   { id: 'uswitch', name: 'Uswitch', url: 'https://www.uswitch.com', color: '#0ea5e9', bg: '#f0f9ff', categories: ['auto', 'home', 'life', 'health'], loggedIn: true },
