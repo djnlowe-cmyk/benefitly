@@ -1,14 +1,22 @@
 'use client';
 
-import { Coverage } from '@/types/coverage';
+import { useEffect, useState } from 'react';
+import { Coverage, Gap, GapEvaluationCounters } from '@/types/coverage';
 import { CATEGORIES, STATUS_STYLES } from '@/data/categories';
 import { formatCurrency, formatDate } from '@/lib/format';
+import { apiFetch } from '@/lib/api';
+import GapAnalysisCard from './GapAnalysisCard';
 
 interface CoverageDetailProps {
   coverage: Coverage;
   onBack: () => void;
   onDelete?: (id: string) => void;
   isMobile?: boolean;
+}
+
+interface CoverageWithGaps extends Coverage {
+  gaps: Gap[];
+  gapsChecked: GapEvaluationCounters;
 }
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
@@ -21,9 +29,58 @@ function Field({ label, value }: { label: string; value: string | null | undefin
   );
 }
 
+interface GapState {
+  coverageId: string;
+  gaps: Gap[];
+  counters: GapEvaluationCounters | null;
+  error: string | null;
+}
+
 export default function CoverageDetail({ coverage, onBack, onDelete, isMobile = false }: CoverageDetailProps) {
   const cat = CATEGORIES[coverage.category];
   const st = STATUS_STYLES[coverage.status];
+
+  const [gapState, setGapState] = useState<GapState | null>(null);
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    apiFetch<CoverageWithGaps>(`/api/coverages/${encodeURIComponent(coverage.id)}`, {
+      signal: ctrl.signal,
+    })
+      .then((data) => {
+        if (ctrl.signal.aborted) return;
+        setGapState({
+          coverageId: coverage.id,
+          gaps: data.gaps ?? [],
+          counters: data.gapsChecked ?? null,
+          error: null,
+        });
+      })
+      .catch((e) => {
+        if (ctrl.signal.aborted) return;
+        setGapState({
+          coverageId: coverage.id,
+          gaps: [],
+          counters: null,
+          error: e instanceof Error ? e.message : 'Failed to load gaps',
+        });
+      });
+    return () => ctrl.abort();
+  }, [coverage.id]);
+
+  const isFresh = gapState?.coverageId === coverage.id;
+  const gapsLoading = !isFresh;
+  const gapsError = isFresh ? gapState!.error : null;
+  const gaps = isFresh ? gapState!.gaps : null;
+  const counters = isFresh ? gapState!.counters : null;
+
+  const handleDismissed = (gapKey: string) => {
+    setGapState((prev) =>
+      prev && prev.coverageId === coverage.id
+        ? { ...prev, gaps: prev.gaps.filter((g) => g.key !== gapKey) }
+        : prev,
+    );
+  };
 
   return (
     <div>
@@ -112,6 +169,23 @@ export default function CoverageDetail({ coverage, onBack, onDelete, isMobile = 
           </div>
         </div>
       </div>
+
+      {gapsLoading && (
+        <div className="mt-6 text-[13px] text-gray-500">Checking for coverage gaps…</div>
+      )}
+      {gapsError && (
+        <div className="mt-6 bg-red-50 border border-red-200 rounded-md p-3 text-[13px] text-red-700">
+          Could not load gaps: {gapsError}
+        </div>
+      )}
+      {!gapsLoading && !gapsError && gaps != null && (
+        <GapAnalysisCard
+          coverageId={coverage.id}
+          gaps={gaps}
+          counters={counters}
+          onDismissed={handleDismissed}
+        />
+      )}
 
       {onDelete && (
         <div className="mt-5 flex justify-end">
