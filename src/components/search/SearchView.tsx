@@ -1,73 +1,82 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Coverage, SearchResult } from '@/types/coverage';
-import { CATEGORIES, STATUS_STYLES } from '@/data/categories';
-import { SEARCH_SCENARIOS } from '@/data/seed';
+import { Coverage, SearchMatch } from '@/types/coverage';
+import { apiFetch, ApiError } from '@/lib/api';
 
+// `coverages` and `isMobile` are passed by AppShell but not needed here:
+// the caller's coverages are loaded server-side in /api/search and the layout
+// is responsive without needing the prop.
 interface SearchViewProps {
   coverages: Coverage[];
   isMobile?: boolean;
 }
 
-type ScenarioEntry = {
-  policyNo: string;
-  relevance: 'high' | 'medium' | 'low';
-  explanation: string;
-  coordination: string;
+const SUGGESTIONS = [
+  'Am I covered for travel cancellation?',
+  'My laptop screen cracked',
+  'A pipe burst at home',
+  'I need a knee MRI',
+  'I was in a car accident',
+  'Client threatening lawsuit',
+];
+
+const FIELD_LABELS: Record<SearchMatch['citedField'], string> = {
+  covered: 'Covered',
+  exclusions: 'Exclusion',
+  summary: 'Summary',
+  type: 'Type',
+  coverageLimit: 'Coverage limit',
+  coInsurance: 'Co-insurance',
 };
 
-function findScenarioMatch(query: string): ScenarioEntry[] | null {
-  const q = query.toLowerCase().trim();
-  if (!q) return null;
-  const words = q.split(/\s+/);
-  let bestMatch: ScenarioEntry[] | null = null;
-  let bestScore = 0;
-  Object.entries(SEARCH_SCENARIOS).forEach(([key, val]) => {
-    const keyWords = key.split(/\s+/);
-    const score = words.filter((w) => keyWords.some((kw) => kw.includes(w) || w.includes(kw))).length;
-    if (score > bestScore) {
-      bestScore = score;
-      bestMatch = val;
-    }
-  });
-  return bestScore > 0 ? bestMatch : null;
-}
+const RELEVANCE_LABEL: Record<SearchMatch['relevance'], string> = {
+  high: 'High relevance',
+  medium: 'Medium relevance',
+  low: 'Low relevance',
+};
 
-export default function SearchView({ coverages }: SearchViewProps) {
+const RELEVANCE_COLOR: Record<SearchMatch['relevance'], string> = {
+  high: '#059669',
+  medium: '#d97706',
+  low: '#6b7280',
+};
+
+const RELEVANCE_BG: Record<SearchMatch['relevance'], string> = {
+  high: '#ecfdf5',
+  medium: '#fffbeb',
+  low: '#f3f4f6',
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function SearchView(_props: SearchViewProps) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<(SearchResult & { coverage?: Coverage })[] | null>(null);
+  const [results, setResults] = useState<SearchMatch[] | null>(null);
   const [searched, setSearched] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [lastQuery, setLastQuery] = useState('');
 
-  const runSearch = useCallback(
-    (raw: string) => {
-      setSearched(true);
-      const match = findScenarioMatch(raw);
-      if (!match) {
-        setResults([]);
-        return;
-      }
-      setResults(
-        match.map((r) => ({
-          policyNo: r.policyNo,
-          relevance: r.relevance,
-          explanation: r.explanation,
-          coordination: r.coordination,
-          coverage: coverages.find((c) => c.policyNo === r.policyNo),
-        }))
+  const runSearch = useCallback(async (raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    setSearched(true);
+    setLoading(true);
+    setLastQuery(trimmed);
+    try {
+      const data = await apiFetch<{ matches: SearchMatch[]; error?: string }>(
+        '/api/search',
+        { method: 'POST', json: { query: trimmed } }
       );
-    },
-    [coverages]
-  );
-
-  const suggestions = [
-    'My laptop screen cracked',
-    'My flight was cancelled',
-    'A pipe burst in my house',
-    'I need a knee MRI',
-    'I was in a car accident',
-    'Client threatening lawsuit',
-  ];
+      setResults(data.matches);
+    } catch (err) {
+      if (!(err instanceof ApiError)) {
+        console.error('search request failed', err);
+      }
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   return (
     <div>
@@ -78,35 +87,37 @@ export default function SearchView({ coverages }: SearchViewProps) {
         </p>
       </div>
 
-      {/* Search bar */}
       <div className="flex gap-2 mb-6">
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && runSearch(query)}
-          placeholder="e.g. My laptop screen cracked, flight cancelled, pipe burst..."
-          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !loading) void runSearch(query);
+          }}
+          disabled={loading}
+          placeholder="e.g. travel cancellation, laptop screen cracked, pipe burst..."
+          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
         />
         <button
-          onClick={() => runSearch(query)}
-          className="px-6 py-3 bg-gray-900 text-white border-none rounded-lg text-sm font-semibold cursor-pointer hover:bg-gray-800"
+          onClick={() => void runSearch(query)}
+          disabled={loading}
+          className="px-6 py-3 bg-gray-900 text-white border-none rounded-lg text-sm font-semibold cursor-pointer hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          Search
+          {loading ? 'Searching…' : 'Search'}
         </button>
       </div>
 
-      {/* Suggestions */}
       {!searched && (
         <div>
           <div className="text-xs text-gray-500 uppercase tracking-wider mb-3">Try asking about:</div>
           <div className="flex flex-wrap gap-2">
-            {suggestions.map((s) => (
+            {SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => {
                   setQuery(s);
-                  runSearch(s);
+                  void runSearch(s);
                 }}
                 className="px-3 py-1.5 bg-gray-100 border border-gray-200 rounded-full text-xs text-gray-700 cursor-pointer hover:bg-gray-200"
               >
@@ -117,86 +128,86 @@ export default function SearchView({ coverages }: SearchViewProps) {
         </div>
       )}
 
-      {/* Results */}
-      {searched && results && (
+      {searched && loading && (
+        <div className="flex items-center gap-3 py-6 text-sm text-gray-600" role="status" aria-live="polite">
+          <span
+            className="inline-block w-4 h-4 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"
+            aria-hidden
+          />
+          Searching your coverage…
+        </div>
+      )}
+
+      {searched && !loading && results && (
         <div>
           {results.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <div className="text-4xl mb-3">⌕</div>
-              <div className="text-base font-medium">No matching coverage found</div>
-              <div className="text-sm mt-1">Try describing your situation differently.</div>
-            </div>
+            <EmptyState query={lastQuery} />
           ) : (
             <div className="space-y-4">
               <div className="text-sm font-semibold text-gray-900">
                 {results.length} coverage source{results.length !== 1 ? 's' : ''} found:
               </div>
-              {results.map((r, i) => {
-                if (!r.coverage) {
-                  return (
-                    <div
-                      key={i}
-                      className="bg-white border border-gray-200 rounded-lg p-5 text-sm text-gray-600"
-                      style={{ borderLeft: '4px solid #9ca3af' }}
-                    >
-                      <div className="font-semibold text-gray-900 mb-1">
-                        Suggested coverage not in your dashboard
-                      </div>
-                      <div className="text-xs text-gray-500 mb-2">Reference policy: {r.policyNo}</div>
-                      <div className="leading-relaxed">{r.explanation}</div>
-                    </div>
-                  );
-                }
-                const cat = CATEGORIES[r.coverage.category];
-                const st = STATUS_STYLES[r.coverage.status];
-                return (
-                  <div
-                    key={i}
-                    className="bg-white border border-gray-200 rounded-lg p-5"
-                    style={{ borderLeft: `4px solid ${r.relevance === 'high' ? '#059669' : '#d97706'}` }}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-8 h-8 rounded-md flex items-center justify-center text-base font-bold"
-                          style={{ background: cat.bg, color: cat.color }}
-                        >
-                          {cat.icon}
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-gray-900">{r.coverage.provider}</div>
-                          <div className="text-xs text-gray-500">{r.coverage.type}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                          style={{
-                            color: r.relevance === 'high' ? '#059669' : '#d97706',
-                            background: r.relevance === 'high' ? '#ecfdf5' : '#fffbeb',
-                          }}
-                        >
-                          {r.relevance === 'high' ? 'High relevance' : 'Medium relevance'}
-                        </span>
-                        <span
-                          className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                          style={{ color: st.color, background: st.bg }}
-                        >
-                          {st.label}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-700 leading-relaxed mb-3">{r.explanation}</div>
-                    <div className="text-xs text-blue-700 bg-blue-50 px-3 py-2 rounded-md">
-                      <span className="font-semibold">Coordination:</span> {r.coordination}
-                    </div>
-                  </div>
-                );
-              })}
+              {results.map((m, i) => (
+                <ResultCard key={`${m.coverageId}-${i}`} match={m} />
+              ))}
             </div>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function ResultCard({ match }: { match: SearchMatch }) {
+  return (
+    <div
+      className="bg-white border border-gray-200 rounded-lg p-5"
+      style={{ borderLeft: `4px solid ${RELEVANCE_COLOR[match.relevance]}` }}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <div className="text-sm font-semibold text-gray-900">{match.provider}</div>
+          <div className="text-xs text-gray-500">{match.type}</div>
+        </div>
+        <span
+          className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+          style={{
+            color: RELEVANCE_COLOR[match.relevance],
+            background: RELEVANCE_BG[match.relevance],
+          }}
+        >
+          {RELEVANCE_LABEL[match.relevance]}
+        </span>
+      </div>
+      <div className="text-sm text-gray-700 leading-relaxed mb-3">{match.explanation}</div>
+      <blockquote className="text-xs text-gray-700 bg-gray-50 border-l-4 border-gray-300 px-3 py-2 mb-3 rounded-r-md">
+        <span className="font-semibold text-gray-900">{FIELD_LABELS[match.citedField]}:</span>{' '}
+        {match.citedValue}
+      </blockquote>
+      <div className="text-xs text-blue-700 bg-blue-50 px-3 py-2 rounded-md">
+        <span className="font-semibold">Coordination:</span> {match.coordination}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ query }: { query: string }) {
+  const mailto =
+    'mailto:feedback@benefitly.app?subject=Search%20miss&body=Query%3A%20' +
+    encodeURIComponent(query);
+  return (
+    <div className="text-sm text-gray-700 leading-relaxed py-8 max-w-xl">
+      <p className="mb-3">
+        <span className="font-semibold text-gray-900">No matching coverage in your account.</span>{' '}
+        Here&apos;s what you&apos;d typically need for that situation: travel insurance, home
+        contents/buildings, a private medical plan, or an extended-warranty / Section 75 credit
+        card — depending on the incident.
+      </p>
+      <p>
+        <a href={mailto} className="text-blue-600 hover:underline">
+          Couldn&apos;t answer this? Tell us what you expected →
+        </a>
+      </p>
     </div>
   );
 }
