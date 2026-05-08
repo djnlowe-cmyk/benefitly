@@ -18,13 +18,14 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  coverages     Coverage[]
-  alerts        Alert[]
-  transactions  Transaction[]
-  assets        Asset[]
-  claims        Claim[]
-  familyMembers FamilyMember[]
-  documents     Document[]
+  coverages         Coverage[]
+  alerts            Alert[]
+  transactions      Transaction[]
+  assets            Asset[]
+  claims            Claim[]
+  familyMembers     FamilyMember[]
+  documents         Document[]
+  conciergeQueries  ConciergeQuery[]
 }
 
 model FamilyMember {
@@ -171,4 +172,20 @@ model Document {
   updatedAt    DateTime @updatedAt
 
   @@index([userId])
+}
+
+// Captures user-submitted "we couldn't answer this" feedback from the search
+// view. v1 is DB-only — CPO reads the table directly. We persist what the user
+// asked + what they expected so we can triage gaps without a chat thread.
+model ConciergeQuery {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  query          String
+  expectedAnswer String?
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
 }
