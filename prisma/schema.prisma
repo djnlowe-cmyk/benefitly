@@ -24,6 +24,7 @@ model User {
   claims        Claim[]
   familyMembers FamilyMember[]
   documents     Document[]
+  gapDismissals CoverageGapDismissal[]
 }
 
 model FamilyMember {
@@ -65,12 +66,27 @@ model Coverage {
   document      Document? @relation(fields: [documentId], references: [id])
 
   alerts        Alert[]
+  gapDismissals CoverageGapDismissal[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@index([userId])
   @@index([category])
   @@index([status])
+}
+
+model CoverageGapDismissal {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coverageId    String
+  coverage      Coverage @relation(fields: [coverageId], references: [id], onDelete: Cascade)
+  gapKey        String
+  dismissReason String
+  dismissedAt   DateTime @default(now())
+
+  @@unique([userId, coverageId, gapKey])
+  @@index([userId, coverageId])
 }
 
 model Alert {
