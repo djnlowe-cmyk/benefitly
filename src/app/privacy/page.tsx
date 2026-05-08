@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-white">
+    <main className="bg-white">
       <article className="max-w-2xl mx-auto px-4 py-12 text-gray-800">
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight mb-2">Privacy notice</h1>
         <p className="text-sm text-gray-500 italic mb-8">Last updated: 8 May 2026.</p>

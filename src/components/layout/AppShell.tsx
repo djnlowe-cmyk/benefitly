@@ -417,7 +417,7 @@ export default function AppShell() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex bg-gray-50">
       {/* Desktop sidebar */}
       {bp.isDesktop && (
         <Sidebar
@@ -429,7 +429,7 @@ export default function AppShell() {
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col">
         {/* Mobile header */}
         {!bp.isDesktop && (
           <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
