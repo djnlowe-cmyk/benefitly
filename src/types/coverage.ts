@@ -36,6 +36,38 @@ export interface Coverage {
   claimPhone: string | null;
   claimUrl: string | null;
   summary: string | null;
+  gaps?: Gap[];
+}
+
+export type GapCategory =
+  | 'exclusion'
+  | 'missing_paired_category'
+  | 'low_limit'
+  | 'high_excess';
+
+export type GapSeverity = 'high' | 'medium' | 'low';
+
+export interface GapAction {
+  kind: 'search' | 'add';
+  target: string;
+  label: string;
+}
+
+export interface Gap {
+  // Stable string identifier (e.g. "exclusion:flood",
+  // "missing_category:dental"). Sticky for dismissals.
+  key: string;
+  category: GapCategory;
+  title: string;
+  rationale: string;
+  severity: GapSeverity;
+  action: GapAction | null;
+}
+
+export interface GapEvaluationCounters {
+  exclusionsChecked: number;
+  limitsChecked: number;
+  pairedCategoriesChecked: number;
 }
 
 export interface CategoryMeta {
