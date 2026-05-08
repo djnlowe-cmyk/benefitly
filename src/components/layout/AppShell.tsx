@@ -113,11 +113,52 @@ export default function AppShell() {
 
   useEffect(() => {
     const ctrl = new AbortController();
-    void loadCoverages(true, ctrl.signal);
-    void loadAlerts(true, ctrl.signal);
-    void loadFamily(true, ctrl.signal);
+    const { signal } = ctrl;
+
+    void (async () => {
+      try {
+        const data = await apiFetch<Coverage[]>('/api/coverages', { signal });
+        if (signal.aborted) return;
+        setCoverages(data);
+        setCoverageError(null);
+        setCoverageState('ready');
+      } catch (e) {
+        if (signal.aborted) return;
+        setCoverageError(e instanceof Error ? e.message : 'Failed to load coverages');
+        setCoverageState('error');
+      }
+    })();
+
+    void (async () => {
+      try {
+        const data = await apiFetch<Alert[]>('/api/alerts', { signal });
+        if (signal.aborted) return;
+        setAlerts(data);
+        setAlertError(null);
+        setAlertState('ready');
+      } catch (e) {
+        if (signal.aborted) return;
+        setAlertError(e instanceof Error ? e.message : 'Failed to load alerts');
+        setAlertState('error');
+      }
+    })();
+
+    void (async () => {
+      try {
+        const data = await apiFetch<FamilyMember[]>('/api/family', { signal });
+        if (signal.aborted) return;
+        setFamily(data);
+        setFamilyError(null);
+        setFamilyState('ready');
+      } catch (e) {
+        if (signal.aborted) return;
+        setFamilyError(e instanceof Error ? e.message : 'Failed to load family');
+        setFamilyState('error');
+      }
+    })();
+
     return () => ctrl.abort();
-  }, [loadCoverages, loadAlerts, loadFamily]);
+  }, []);
 
   const navigate = useCallback((view: ViewId) => {
     setActiveView(view);
@@ -134,8 +175,9 @@ export default function AppShell() {
       setCoverages((prev) => prev.filter((c) => c.id !== id));
       setSelectedCoverage(null);
       try {
-        const res = await fetch(`/api/coverages?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+        await apiFetch<{ deleted: true }>(`/api/coverages?id=${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+        });
       } catch (e) {
         setCoverages(previous);
         setCoverageError(e instanceof Error ? e.message : 'Failed to delete coverage');
@@ -145,16 +187,10 @@ export default function AppShell() {
   );
 
   const handleAddCoverage = useCallback(async (coverage: Omit<Coverage, 'id'>) => {
-    const res = await fetch('/api/coverages', {
+    const created = await apiFetch<Coverage>('/api/coverages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(coverage),
+      json: coverage,
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || `Failed to save (${res.status})`);
-    }
-    const created: Coverage = await res.json();
     setCoverages((prev) => [created, ...prev]);
     setActiveView('dashboard');
   }, []);
@@ -162,12 +198,10 @@ export default function AppShell() {
   const handleMarkAlertRead = useCallback(async (id: string) => {
     setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, read: true } : a)));
     try {
-      const res = await fetch('/api/alerts', {
+      await apiFetch<Alert>('/api/alerts', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, read: true }),
+        json: { id, read: true },
       });
-      if (!res.ok) throw new Error(`Failed to mark alert read (${res.status})`);
     } catch (e) {
       setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, read: false } : a)));
       setAlertError(e instanceof Error ? e.message : 'Failed to mark alert read');
@@ -175,16 +209,10 @@ export default function AppShell() {
   }, []);
 
   const handleAddFamily = useCallback(async (name: string, relation: string) => {
-    const res = await fetch('/api/family', {
+    const created = await apiFetch<FamilyMember>('/api/family', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, relation }),
+      json: { name, relation },
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || `Failed to add (${res.status})`);
-    }
-    const created: FamilyMember = await res.json();
     setFamily((prev) => [...prev, created]);
   }, []);
 
@@ -193,8 +221,9 @@ export default function AppShell() {
       const previous = family;
       setFamily((prev) => prev.filter((m) => m.id !== id));
       try {
-        const res = await fetch(`/api/family?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+        await apiFetch<{ deleted: true }>(`/api/family?id=${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+        });
       } catch (e) {
         setFamily(previous);
         setFamilyError(e instanceof Error ? e.message : 'Failed to delete family member');

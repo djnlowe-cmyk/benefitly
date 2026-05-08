@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       premium: body.premium || 0,
       deductible: body.deductible ?? null,
       oopMax: body.oopMax ?? null,
-      coverageLimit: body.coverageLimit || body.limit || null,
+      coverageLimit: body.coverageLimit || null,
       coInsurance: body.coInsurance || null,
       exclusions: JSON.stringify(body.exclusions || []),
       claimPhone: body.claimPhone || null,
@@ -85,9 +85,7 @@ export async function PATCH(req: NextRequest) {
   if ('premium' in body) data.premium = body.premium ?? 0;
   if ('deductible' in body) data.deductible = body.deductible ?? null;
   if ('oopMax' in body) data.oopMax = body.oopMax ?? null;
-  if ('coverageLimit' in body || 'limit' in body) {
-    data.coverageLimit = body.coverageLimit ?? body.limit ?? null;
-  }
+  if ('coverageLimit' in body) data.coverageLimit = body.coverageLimit ?? null;
   if ('coInsurance' in body) data.coInsurance = body.coInsurance ?? null;
   if ('exclusions' in body) data.exclusions = JSON.stringify(body.exclusions || []);
   if ('claimPhone' in body) data.claimPhone = body.claimPhone ?? null;

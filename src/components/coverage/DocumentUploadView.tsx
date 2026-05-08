@@ -137,7 +137,7 @@ function fieldsFromCoverage(c: UploadCoverage | null, parsed: Record<string, unk
       premium: pickNumber(parsed.premium) ?? 0,
       deductible: pickNumber(parsed.deductible),
       oopMax: pickNumber(parsed.oopMax),
-      coverageLimit: pickString(parsed.limit),
+      coverageLimit: pickString(parsed.coverageLimit),
       coInsurance: pickString(parsed.coInsurance) || null,
       exclusions: pickArray(parsed.exclusions),
       claimPhone: pickString(parsed.claimPhone),
