@@ -1,5 +1,37 @@
 // Coverage data model — based on PRD section 7.1
 
+// A pointer back into the source document for one parsed field. The parser is
+// asked for at most one anchor per populated field; the UI uses it to render a
+// "from {filename} · p.{page}" caption that links to the underlying document.
+export interface SourceAnchor {
+  page?: number | null;
+  excerpt?: string | null;
+}
+
+// Shape persisted into Document.parsedData. Stored as JSON-encoded text so the
+// Prisma schema doesn't have to evolve every time the parser learns a new
+// field — sourceAnchors rides through as a sibling key.
+export interface ParsedDocument {
+  provider?: string | null;
+  type?: string | null;
+  category?: string | null;
+  policyNo?: string | null;
+  covered?: string[];
+  startDate?: string | null;
+  endDate?: string | null;
+  premium?: number | null;
+  deductible?: number | null;
+  oopMax?: number | null;
+  coverageLimit?: string | null;
+  coInsurance?: string | null;
+  exclusions?: string[];
+  claimPhone?: string | null;
+  claimUrl?: string | null;
+  summary?: string | null;
+  confidence?: number | null;
+  sourceAnchors?: Record<string, SourceAnchor>;
+}
+
 export type CoverageCategory =
   | 'health'
   | 'dental'
