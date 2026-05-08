@@ -34,9 +34,10 @@ const DEFAULT_REGION: Required<RegionContext> = {
 };
 
 function resolve(region?: RegionContext) {
-  const country = region?.country || DEFAULT_REGION.country;
-  const currency = region?.currency || COUNTRY_CURRENCIES[country] || DEFAULT_REGION.currency;
-  const locale = COUNTRY_LOCALES[country] || 'en-GB';
+  const country: string = region?.country ?? DEFAULT_REGION.country;
+  const currency: string =
+    region?.currency ?? COUNTRY_CURRENCIES[country] ?? DEFAULT_REGION.currency;
+  const locale: string = COUNTRY_LOCALES[country] ?? 'en-GB';
   return { country, currency, locale };
 }
 
