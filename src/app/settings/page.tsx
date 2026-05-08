@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/db';
 import CountryPicker from './CountryPicker';
+import DeleteAccountButton from './DeleteAccountButton';
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -35,6 +36,14 @@ export default async function SettingsPage() {
         <p className="text-xs text-gray-500">
           More countries are coming soon. Today, only United Kingdom (GBP) is fully supported. The schema and formatters already handle other locales — we just need the regional content libraries before flipping the switch.
         </p>
+
+        <section className="bg-white border border-red-200 rounded-lg p-6 mt-8">
+          <h2 className="text-base font-semibold text-gray-900 mb-1">Delete account</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Permanently delete your account, uploaded documents, coverages, alerts, and all related data. This cannot be undone.
+          </p>
+          <DeleteAccountButton />
+        </section>
       </div>
     </main>
   );

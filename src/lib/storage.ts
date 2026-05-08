@@ -5,7 +5,7 @@
 // is present we use Vercel Blob; otherwise we fall back to local disk under
 // `./uploads/{userId}/`, which is the dev experience.
 
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 
 export interface PutResult {
@@ -24,9 +24,23 @@ export interface DocumentStorage {
     contentType: string;
     body: Buffer;
   }): Promise<PutResult>;
+  del(storagePath: string): Promise<void>;
 }
 
 const LOCAL_UPLOAD_DIR = join(process.cwd(), 'uploads');
+
+// A storagePath is self-identifying: Vercel Blob persists the full https URL,
+// the local backend persists an absolute fs path. Both backends share the same
+// delete dispatcher so account-deletion works correctly even if a user's
+// documents span backends across deploy configurations.
+async function deleteStorageEntry(storagePath: string): Promise<void> {
+  if (/^https?:\/\//i.test(storagePath)) {
+    const { del } = await import('@vercel/blob');
+    await del(storagePath, { token: process.env.BLOB_READ_WRITE_TOKEN });
+    return;
+  }
+  await rm(storagePath, { force: true });
+}
 
 const localDiskStorage: DocumentStorage = {
   async put({ userId, filename, body }) {
@@ -37,6 +51,7 @@ const localDiskStorage: DocumentStorage = {
     await writeFile(filepath, body);
     return { storagePath: filepath, url: null };
   },
+  del: deleteStorageEntry,
 };
 
 const vercelBlobStorage: DocumentStorage = {
@@ -53,6 +68,7 @@ const vercelBlobStorage: DocumentStorage = {
     });
     return { storagePath: result.url, url: result.url };
   },
+  del: deleteStorageEntry,
 };
 
 let cached: DocumentStorage | null = null;
