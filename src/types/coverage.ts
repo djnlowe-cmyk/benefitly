@@ -68,16 +68,36 @@ export interface FamilyMember {
   relation: string;
 }
 
+// One result row in the /api/search response. Excerpt is verbatim from the
+// source coverage and citedField is a JSON path (e.g. "covered", "exclusions[2]")
+// into the user's coverage record. Provider/type/sourceDocumentId are server
+// enrichments so the UI can render result cards without a second round-trip.
 export interface SearchMatch {
   coverageId: string;
   provider: string;
   type: string;
   relevance: 'high' | 'medium' | 'low';
-  citedField: 'covered' | 'exclusions' | 'summary' | 'type' | 'coverageLimit' | 'coInsurance';
-  citedValue: string;
+  citedField: string;
+  citedExcerpt: string;
   explanation: string;
-  coordination: string;
+  coordination?: string;
   sourceDocumentId: string | null;
+}
+
+// Returned only when results is empty. Names the cover types the user would
+// typically need so the UI can render an actionable empty state instead of
+// "no matches".
+export interface SearchGapAnswer {
+  explanation: string;
+  recommendedTypes: string[];
+}
+
+// Complete /api/search response shape consumed by SearchView.
+export interface SearchResponse {
+  results: SearchMatch[];
+  gapAnswer?: SearchGapAnswer;
+  conciergeAvailable: true;
+  error?: 'search-unavailable' | 'query required' | 'query too long';
 }
 
 export interface Transaction {
