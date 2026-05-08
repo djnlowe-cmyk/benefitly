@@ -5,9 +5,12 @@ import { Coverage, Alert, FamilyMember, ViewId } from '@/types/coverage';
 import { SEED_TRANSACTIONS, SEED_ASSETS, SEED_CLAIMS } from '@/data/seed';
 import { useBreakpoint } from '@/lib/hooks';
 import { apiFetch } from '@/lib/api';
+import { type OnboardingState } from '@/lib/onboarding';
+import { exampleQuestionForCategory } from '@/data/onboardingExamples';
 import Sidebar from './Sidebar';
 import BottomTabBar from './BottomTabBar';
 import DashboardView from '@/components/dashboard/DashboardView';
+import SearchNudge from '@/components/dashboard/SearchNudge';
 import CoverageDetail from '@/components/coverage/CoverageDetail';
 import SearchView from '@/components/search/SearchView';
 import AlertsView from '@/components/alerts/AlertsView';
@@ -53,6 +56,7 @@ export default function AppShell() {
   const [coverages, setCoverages] = useState<Coverage[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [family, setFamily] = useState<FamilyMember[]>([]);
+  const [onboardingState, setOnboardingState] = useState<OnboardingState>({});
 
   const [coverageState, setCoverageState] = useState<LoadState>('loading');
   const [alertState, setAlertState] = useState<LoadState>('loading');
@@ -63,6 +67,8 @@ export default function AppShell() {
   const [familyError, setFamilyError] = useState<string | null>(null);
 
   const [selectedCoverage, setSelectedCoverage] = useState<Coverage | null>(null);
+  const [pendingNudgeExample, setPendingNudgeExample] = useState<string | null>(null);
+  const [pendingSearchQuery, setPendingSearchQuery] = useState<string | null>(null);
 
   const unreadAlerts = useMemo(() => alerts.filter((a) => !a.read).length, [alerts]);
 
@@ -157,8 +163,36 @@ export default function AppShell() {
       }
     })();
 
+    void (async () => {
+      try {
+        const data = await apiFetch<{ onboardingState: OnboardingState }>('/api/me', { signal });
+        if (signal.aborted) return;
+        setOnboardingState(data.onboardingState ?? {});
+      } catch {
+        // Onboarding flags are non-critical — fall back to {} (which means
+        // re-show prompts). We deliberately don't surface an error UI here.
+      }
+    })();
+
     return () => ctrl.abort();
   }, []);
+
+  const markOnboardingFlag = useCallback(
+    async (flag: keyof OnboardingState) => {
+      if (onboardingState[flag]) return;
+      setOnboardingState((prev) => ({ ...prev, [flag]: true }));
+      try {
+        await apiFetch<{ onboardingState: OnboardingState }>('/api/me', {
+          method: 'PATCH',
+          json: { onboardingState: { [flag]: true } },
+        });
+      } catch {
+        // Non-fatal: the prompt will reappear next session, which is preferable
+        // to blocking the UI on a flag write.
+      }
+    },
+    [onboardingState]
+  );
 
   const navigate = useCallback((view: ViewId) => {
     setActiveView(view);
@@ -186,14 +220,28 @@ export default function AppShell() {
     [coverages]
   );
 
-  const handleAddCoverage = useCallback(async (coverage: Omit<Coverage, 'id'>) => {
-    const created = await apiFetch<Coverage>('/api/coverages', {
-      method: 'POST',
-      json: coverage,
-    });
-    setCoverages((prev) => [created, ...prev]);
-    setActiveView('dashboard');
-  }, []);
+  const triggerFirstSaveNudge = useCallback(
+    (savedCategory: string | undefined, previousCount: number) => {
+      if (previousCount > 0) return;
+      if (onboardingState.seenPostSavePrompt) return;
+      setPendingNudgeExample(exampleQuestionForCategory(savedCategory));
+    },
+    [onboardingState.seenPostSavePrompt]
+  );
+
+  const handleAddCoverage = useCallback(
+    async (coverage: Omit<Coverage, 'id'>) => {
+      const previousCount = coverages.length;
+      const created = await apiFetch<Coverage>('/api/coverages', {
+        method: 'POST',
+        json: coverage,
+      });
+      setCoverages((prev) => [created, ...prev]);
+      setActiveView('dashboard');
+      triggerFirstSaveNudge(created.category, previousCount);
+    },
+    [coverages.length, triggerFirstSaveNudge]
+  );
 
   const handleMarkAlertRead = useCallback(async (id: string) => {
     setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, read: true } : a)));
@@ -260,16 +308,51 @@ export default function AppShell() {
 
     switch (activeView) {
       case 'dashboard':
-      case 'policies':
+      case 'policies': {
+        const showEmptyState =
+          activeView === 'dashboard' &&
+          coverages.length === 0 &&
+          alerts.length === 0 &&
+          !onboardingState.seenEmptyState;
         return (
-          <DashboardView
+          <>
+            {pendingNudgeExample && (
+              <SearchNudge
+                example={pendingNudgeExample}
+                onTry={() => {
+                  setPendingSearchQuery(pendingNudgeExample);
+                  setPendingNudgeExample(null);
+                  void markOnboardingFlag('seenPostSavePrompt');
+                  setActiveView('search');
+                }}
+                onDismiss={() => {
+                  setPendingNudgeExample(null);
+                  void markOnboardingFlag('seenPostSavePrompt');
+                }}
+              />
+            )}
+            <DashboardView
+              coverages={coverages}
+              onSelectCoverage={handleSelectCoverage}
+              isMobile={bp.isMobile}
+              showEmptyState={showEmptyState}
+              onStartUpload={() => {
+                if (showEmptyState) void markOnboardingFlag('seenEmptyState');
+                setActiveView('upload');
+              }}
+            />
+          </>
+        );
+      }
+      case 'search':
+        return (
+          <SearchView
             coverages={coverages}
-            onSelectCoverage={handleSelectCoverage}
             isMobile={bp.isMobile}
+            initialQuery={pendingSearchQuery}
+            onInitialQueryConsumed={() => setPendingSearchQuery(null)}
           />
         );
-      case 'search':
-        return <SearchView coverages={coverages} isMobile={bp.isMobile} />;
       case 'transactions':
         return <TransactionsView transactions={SEED_TRANSACTIONS} isMobile={bp.isMobile} />;
       case 'assets':
@@ -292,11 +375,13 @@ export default function AppShell() {
         return (
           <DocumentUploadView
             onSaved={(coverage) => {
+              const previousCount = coverages.length;
               setCoverages((prev) => {
                 const without = prev.filter((c) => c.id !== coverage.id);
                 return [coverage, ...without];
               });
               setActiveView('dashboard');
+              triggerFirstSaveNudge(coverage.category, previousCount);
             }}
             onCancel={() => navigate('dashboard')}
           />

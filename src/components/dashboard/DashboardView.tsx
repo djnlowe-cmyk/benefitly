@@ -5,14 +5,23 @@ import { Coverage, CoverageCategory } from '@/types/coverage';
 import { CATEGORIES } from '@/data/categories';
 import { formatCurrency } from '@/lib/format';
 import CoverageCard from '@/components/coverage/CoverageCard';
+import EmptyDashboard from '@/components/dashboard/EmptyDashboard';
 
 interface DashboardViewProps {
   coverages: Coverage[];
   onSelectCoverage: (coverage: Coverage) => void;
+  onStartUpload?: () => void;
+  showEmptyState?: boolean;
   isMobile?: boolean;
 }
 
-export default function DashboardView({ coverages, onSelectCoverage, isMobile = false }: DashboardViewProps) {
+export default function DashboardView({
+  coverages,
+  onSelectCoverage,
+  onStartUpload,
+  showEmptyState = false,
+  isMobile = false,
+}: DashboardViewProps) {
   const categoryCounts = useMemo(() => {
     const counts: Partial<Record<CoverageCategory, number>> = {};
     coverages.forEach((c) => {
@@ -20,6 +29,10 @@ export default function DashboardView({ coverages, onSelectCoverage, isMobile = 
     });
     return counts;
   }, [coverages]);
+
+  if (showEmptyState && coverages.length === 0 && onStartUpload) {
+    return <EmptyDashboard onUpload={onStartUpload} />;
+  }
 
   const totalPremium = coverages.reduce((s, c) => s + (c.premium || 0), 0);
   const activeCount = coverages.filter((c) => c.status === 'active').length;

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "onboardingState" TEXT NOT NULL DEFAULT '{}';

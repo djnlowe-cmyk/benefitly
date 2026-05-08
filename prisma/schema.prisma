@@ -12,10 +12,11 @@ model User {
   email         String    @unique
   name          String?
   passwordHash  String
-  country       String    @default("GB")
-  currency      String    @default("GBP")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  country         String    @default("GB")
+  currency        String    @default("GBP")
+  onboardingState String    @default("{}")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   coverages     Coverage[]
   alerts        Alert[]

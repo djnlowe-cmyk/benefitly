@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Coverage, SearchMatch } from '@/types/coverage';
 import { apiFetch, ApiError } from '@/lib/api';
 
@@ -10,6 +10,11 @@ import { apiFetch, ApiError } from '@/lib/api';
 interface SearchViewProps {
   coverages: Coverage[];
   isMobile?: boolean;
+  // Pre-fills the input and runs the search once when set; used by the
+  // first-run nudge. AppShell clears it after consumption so re-mounts
+  // don't replay the search.
+  initialQuery?: string | null;
+  onInitialQueryConsumed?: () => void;
 }
 
 const SUGGESTIONS = [
@@ -48,13 +53,13 @@ const RELEVANCE_BG: Record<SearchMatch['relevance'], string> = {
   low: '#f3f4f6',
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function SearchView(_props: SearchViewProps) {
-  const [query, setQuery] = useState('');
+export default function SearchView({ initialQuery, onInitialQueryConsumed }: SearchViewProps) {
+  const [query, setQuery] = useState(() => initialQuery ?? '');
   const [results, setResults] = useState<SearchMatch[] | null>(null);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastQuery, setLastQuery] = useState('');
+  const initialRan = useRef(false);
 
   const runSearch = useCallback(async (raw: string) => {
     const trimmed = raw.trim();
@@ -77,6 +82,18 @@ export default function SearchView(_props: SearchViewProps) {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (initialRan.current) return;
+    if (!initialQuery) return;
+    initialRan.current = true;
+    // Defer so the synchronous setState calls inside runSearch don't run
+    // during this effect (React 19 lints that as a cascading render).
+    queueMicrotask(() => {
+      void runSearch(initialQuery);
+    });
+    onInitialQueryConsumed?.();
+  }, [initialQuery, runSearch, onInitialQueryConsumed]);
 
   return (
     <div>
