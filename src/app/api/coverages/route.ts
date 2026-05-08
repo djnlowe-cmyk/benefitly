@@ -2,6 +2,37 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireUserId } from '@/lib/session';
 import { ensureRenewalAlert } from '@/lib/alerts/renewal';
+import { parseJsonBody, z } from '@/lib/validation';
+
+const stringArray = z.array(z.string());
+const nullableString = z.string().nullable().optional();
+const nullableNumber = z.number().nullable().optional();
+
+const coverageCreateSchema = z.object({
+  provider: z.string().min(1),
+  type: z.string().min(1),
+  category: z.string().min(1),
+  policyNo: nullableString,
+  status: z.string().optional(),
+  statusLabel: z.string().optional(),
+  covered: stringArray.optional(),
+  startDate: z.string().min(1),
+  endDate: z.string().min(1),
+  premium: z.number().optional(),
+  deductible: nullableNumber,
+  oopMax: nullableNumber,
+  // coverageLimit is a String? in Prisma — reject numbers explicitly.
+  coverageLimit: nullableString,
+  coInsurance: nullableString,
+  exclusions: stringArray.optional(),
+  claimPhone: nullableString,
+  claimUrl: nullableString,
+  summary: nullableString,
+  confidence: nullableNumber,
+  documentId: nullableString,
+});
+
+const coveragePatchSchema = coverageCreateSchema.partial();
 
 export async function GET() {
   const session = await requireUserId();
@@ -25,30 +56,32 @@ export async function POST(req: NextRequest) {
   const session = await requireUserId();
   if (!session.ok) return session.response;
 
-  const body = await req.json();
+  const parsed = await parseJsonBody(req, coverageCreateSchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
 
   const coverage = await prisma.coverage.create({
     data: {
       provider: body.provider,
       type: body.type,
       category: body.category,
-      policyNo: body.policyNo || null,
-      status: body.status || 'active',
-      statusLabel: body.statusLabel || 'Active',
-      covered: JSON.stringify(body.covered || []),
+      policyNo: body.policyNo ?? null,
+      status: body.status ?? 'active',
+      statusLabel: body.statusLabel ?? 'Active',
+      covered: JSON.stringify(body.covered ?? []),
       startDate: body.startDate,
       endDate: body.endDate,
-      premium: body.premium || 0,
+      premium: body.premium ?? 0,
       deductible: body.deductible ?? null,
       oopMax: body.oopMax ?? null,
-      coverageLimit: body.coverageLimit || null,
-      coInsurance: body.coInsurance || null,
-      exclusions: JSON.stringify(body.exclusions || []),
-      claimPhone: body.claimPhone || null,
-      claimUrl: body.claimUrl || null,
-      summary: body.summary || null,
+      coverageLimit: body.coverageLimit ?? null,
+      coInsurance: body.coInsurance ?? null,
+      exclusions: JSON.stringify(body.exclusions ?? []),
+      claimPhone: body.claimPhone ?? null,
+      claimUrl: body.claimUrl ?? null,
+      summary: body.summary ?? null,
       confidence: body.confidence ?? null,
-      documentId: body.documentId || null,
+      documentId: body.documentId ?? null,
       userId: session.userId,
     },
   });
@@ -86,16 +119,18 @@ export async function PATCH(req: NextRequest) {
   const existing = await prisma.coverage.findFirst({ where: { id, userId: session.userId } });
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const body = await req.json();
+  const parsed = await parseJsonBody(req, coveragePatchSchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
   const data: Record<string, unknown> = {};
 
   if ('provider' in body) data.provider = body.provider;
   if ('type' in body) data.type = body.type;
   if ('category' in body) data.category = body.category;
-  if ('policyNo' in body) data.policyNo = body.policyNo || null;
+  if ('policyNo' in body) data.policyNo = body.policyNo ?? null;
   if ('status' in body) data.status = body.status;
   if ('statusLabel' in body) data.statusLabel = body.statusLabel;
-  if ('covered' in body) data.covered = JSON.stringify(body.covered || []);
+  if ('covered' in body) data.covered = JSON.stringify(body.covered ?? []);
   if ('startDate' in body) data.startDate = body.startDate;
   if ('endDate' in body) data.endDate = body.endDate;
   if ('premium' in body) data.premium = body.premium ?? 0;
@@ -103,7 +138,7 @@ export async function PATCH(req: NextRequest) {
   if ('oopMax' in body) data.oopMax = body.oopMax ?? null;
   if ('coverageLimit' in body) data.coverageLimit = body.coverageLimit ?? null;
   if ('coInsurance' in body) data.coInsurance = body.coInsurance ?? null;
-  if ('exclusions' in body) data.exclusions = JSON.stringify(body.exclusions || []);
+  if ('exclusions' in body) data.exclusions = JSON.stringify(body.exclusions ?? []);
   if ('claimPhone' in body) data.claimPhone = body.claimPhone ?? null;
   if ('claimUrl' in body) data.claimUrl = body.claimUrl ?? null;
   if ('summary' in body) data.summary = body.summary ?? null;

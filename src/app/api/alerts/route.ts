@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireUserId } from '@/lib/session';
+import { parseJsonBody, z } from '@/lib/validation';
+
+const alertPatchSchema = z.object({
+  id: z.string().min(1),
+  read: z.boolean().optional(),
+});
 
 export async function GET() {
   const session = await requireUserId();
@@ -18,7 +24,9 @@ export async function PATCH(req: NextRequest) {
   const session = await requireUserId();
   if (!session.ok) return session.response;
 
-  const { id, read } = await req.json();
+  const parsed = await parseJsonBody(req, alertPatchSchema);
+  if (!parsed.ok) return parsed.response;
+  const { id, read } = parsed.data;
 
   const existing = await prisma.alert.findFirst({ where: { id, userId: session.userId } });
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
