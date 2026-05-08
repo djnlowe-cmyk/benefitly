@@ -2,37 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireUserId } from '@/lib/session';
 import { ensureRenewalAlert } from '@/lib/alerts/renewal';
-import { parseJsonBody, z } from '@/lib/validation';
-
-const stringArray = z.array(z.string());
-const nullableString = z.string().nullable().optional();
-const nullableNumber = z.number().nullable().optional();
-
-const coverageCreateSchema = z.object({
-  provider: z.string().min(1),
-  type: z.string().min(1),
-  category: z.string().min(1),
-  policyNo: nullableString,
-  status: z.string().optional(),
-  statusLabel: z.string().optional(),
-  covered: stringArray.optional(),
-  startDate: z.string().min(1),
-  endDate: z.string().min(1),
-  premium: z.number().optional(),
-  deductible: nullableNumber,
-  oopMax: nullableNumber,
-  // coverageLimit is a String? in Prisma — reject numbers explicitly.
-  coverageLimit: nullableString,
-  coInsurance: nullableString,
-  exclusions: stringArray.optional(),
-  claimPhone: nullableString,
-  claimUrl: nullableString,
-  summary: nullableString,
-  confidence: nullableNumber,
-  documentId: nullableString,
-});
-
-const coveragePatchSchema = coverageCreateSchema.partial();
+import { parseJsonBody } from '@/lib/validation';
+import { coverageCreateSchema, coveragePatchSchema } from '@/lib/schemas/coverage';
 
 export async function GET() {
   const session = await requireUserId();

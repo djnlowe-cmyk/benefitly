@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireUserId } from '@/lib/session';
 import { ensureRenewalAlert } from '@/lib/alerts/renewal';
+import { parseJsonBody } from '@/lib/validation';
+import { coveragePatchSchema } from '@/lib/schemas/coverage';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -57,7 +59,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   const existing = await prisma.coverage.findFirst({ where: { id, userId: session.userId } });
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const body = await req.json();
+  const parsed = await parseJsonBody(req, coveragePatchSchema);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.data;
   const data: Record<string, unknown> = {};
 
   if ('provider' in body) data.provider = body.provider;

@@ -211,6 +211,35 @@ describe('PATCH /api/coverages/[id]', () => {
     const res = await coveragePATCH(patchRequest({ provider: 'X' }), ctx(fixture.coverageA));
     expect(res.status).toBe(401);
   });
+
+  // Mirrors ALI-75's defense-in-depth on the legacy collection PATCH so the
+  // per-id route can't regress to leaking Prisma 500s when client traffic
+  // sends a typed-wrong payload.
+  it('rejects coverageLimit as a number with 400 (schema regression)', async () => {
+    asUser(fixture.userA);
+    const res = await coveragePATCH(patchRequest({ coverageLimit: 500 }), ctx(fixture.coverageA));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe('Invalid request');
+    expect(Array.isArray(body.details)).toBe(true);
+    expect(
+      body.details.some(
+        (d: { path?: unknown[] }) => Array.isArray(d.path) && d.path.includes('coverageLimit'),
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(body)).not.toMatch(/Prisma|prisma/);
+  });
+
+  it('rejects malformed JSON body with 400', async () => {
+    asUser(fixture.userA);
+    const req = new Request('http://localhost/api/coverages/x', {
+      method: 'PATCH',
+      body: '{not json',
+      headers: { 'Content-Type': 'application/json' },
+    }) as unknown as NextRequest;
+    const res = await coveragePATCH(req, ctx(fixture.coverageA));
+    expect(res.status).toBe(400);
+  });
 });
 
 describe('DELETE /api/coverages/[id]', () => {
