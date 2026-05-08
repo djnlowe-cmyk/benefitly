@@ -68,12 +68,16 @@ export interface FamilyMember {
   relation: string;
 }
 
-export interface SearchResult {
-  policyNo: string;
+export interface SearchMatch {
+  coverageId: string;
+  provider: string;
+  type: string;
   relevance: 'high' | 'medium' | 'low';
+  citedField: 'covered' | 'exclusions' | 'summary' | 'type' | 'coverageLimit' | 'coInsurance';
+  citedValue: string;
   explanation: string;
   coordination: string;
-  coverage?: Coverage;
+  sourceDocumentId: string | null;
 }
 
 export interface Transaction {
