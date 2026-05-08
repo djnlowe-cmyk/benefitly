@@ -8,8 +8,11 @@ import { apiFetch } from '@/lib/api';
 import Sidebar from './Sidebar';
 import BottomTabBar from './BottomTabBar';
 import DashboardView from '@/components/dashboard/DashboardView';
+import EmptyDashboard from '@/components/dashboard/EmptyDashboard';
+import OnboardingNudge from '@/components/dashboard/OnboardingNudge';
 import CoverageDetail from '@/components/coverage/CoverageDetail';
 import SearchView from '@/components/search/SearchView';
+import type { OnboardingState } from '@/lib/onboarding';
 import AlertsView from '@/components/alerts/AlertsView';
 import TransactionsView from '@/components/transactions/TransactionsView';
 import AssetsView from '@/components/assets/AssetsView';
@@ -46,13 +49,19 @@ function ErrorPanel({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
-export default function AppShell() {
+interface AppShellProps {
+  initialView?: ViewId;
+  initialQuery?: string;
+}
+
+export default function AppShell({ initialView = 'dashboard', initialQuery }: AppShellProps = {}) {
   const bp = useBreakpoint();
-  const [activeView, setActiveView] = useState<ViewId>('dashboard');
+  const [activeView, setActiveView] = useState<ViewId>(initialView);
 
   const [coverages, setCoverages] = useState<Coverage[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [family, setFamily] = useState<FamilyMember[]>([]);
+  const [onboardingState, setOnboardingState] = useState<OnboardingState>('done');
 
   const [coverageState, setCoverageState] = useState<LoadState>('loading');
   const [alertState, setAlertState] = useState<LoadState>('loading');
@@ -157,7 +166,30 @@ export default function AppShell() {
       }
     })();
 
+    void (async () => {
+      try {
+        const data = await apiFetch<{ state: OnboardingState }>('/api/onboarding', { signal });
+        if (signal.aborted) return;
+        setOnboardingState(data.state);
+      } catch {
+        // Onboarding state is non-critical; if it fails we leave the
+        // default ('done') so neither empty-state nor nudge appears
+        // for an existing user.
+      }
+    })();
+
     return () => ctrl.abort();
+  }, []);
+
+  const handleMarkOnboardingDone = useCallback(async () => {
+    setOnboardingState('done');
+    try {
+      await apiFetch<{ state: OnboardingState }>('/api/onboarding', { method: 'POST' });
+    } catch {
+      // Optimistic — even if the network call fails the UI hides the
+      // nudge for this session, and the next page-load fetch will reflect
+      // the true server state.
+    }
   }, []);
 
   const navigate = useCallback((view: ViewId) => {
@@ -193,6 +225,7 @@ export default function AppShell() {
     });
     setCoverages((prev) => [created, ...prev]);
     setActiveView('dashboard');
+    setOnboardingState((prev) => (prev === 'fresh' ? 'first_save' : prev));
   }, []);
 
   const handleMarkAlertRead = useCallback(async (id: string) => {
@@ -261,15 +294,23 @@ export default function AppShell() {
     switch (activeView) {
       case 'dashboard':
       case 'policies':
+        if (activeView === 'dashboard' && coverages.length === 0) {
+          return <EmptyDashboard onUpload={() => setActiveView('upload')} />;
+        }
         return (
-          <DashboardView
-            coverages={coverages}
-            onSelectCoverage={handleSelectCoverage}
-            isMobile={bp.isMobile}
-          />
+          <div>
+            {activeView === 'dashboard' && onboardingState === 'first_save' && (
+              <OnboardingNudge onDone={handleMarkOnboardingDone} />
+            )}
+            <DashboardView
+              coverages={coverages}
+              onSelectCoverage={handleSelectCoverage}
+              isMobile={bp.isMobile}
+            />
+          </div>
         );
       case 'search':
-        return <SearchView coverages={coverages} isMobile={bp.isMobile} />;
+        return <SearchView coverages={coverages} isMobile={bp.isMobile} initialQuery={initialQuery} />;
       case 'transactions':
         return <TransactionsView transactions={SEED_TRANSACTIONS} isMobile={bp.isMobile} />;
       case 'assets':
@@ -297,6 +338,7 @@ export default function AppShell() {
                 return [coverage, ...without];
               });
               setActiveView('dashboard');
+              setOnboardingState((prev) => (prev === 'fresh' ? 'first_save' : prev));
             }}
             onCancel={() => navigate('dashboard')}
           />

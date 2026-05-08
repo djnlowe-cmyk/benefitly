@@ -8,6 +8,7 @@ import { SEARCH_SCENARIOS } from '@/data/seed';
 interface SearchViewProps {
   coverages: Coverage[];
   isMobile?: boolean;
+  initialQuery?: string;
 }
 
 type ScenarioEntry = {
@@ -34,28 +35,36 @@ function findScenarioMatch(query: string): ScenarioEntry[] | null {
   return bestScore > 0 ? bestMatch : null;
 }
 
-export default function SearchView({ coverages }: SearchViewProps) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<(SearchResult & { coverage?: Coverage })[] | null>(null);
-  const [searched, setSearched] = useState(false);
+function buildResults(
+  raw: string,
+  coverages: Coverage[]
+): (SearchResult & { coverage?: Coverage })[] {
+  const match = findScenarioMatch(raw);
+  if (!match) return [];
+  return match.map((r) => ({
+    policyNo: r.policyNo,
+    relevance: r.relevance,
+    explanation: r.explanation,
+    coordination: r.coordination,
+    coverage: coverages.find((c) => c.policyNo === r.policyNo),
+  }));
+}
+
+export default function SearchView({ coverages, initialQuery }: SearchViewProps) {
+  const seed = initialQuery?.trim() ?? '';
+  // If we landed here with a query in the URL (e.g. via the onboarding
+  // nudge), seed the input AND results synchronously so the user sees
+  // results on first paint without an extra render cycle.
+  const [query, setQuery] = useState(initialQuery ?? '');
+  const [results, setResults] = useState<(SearchResult & { coverage?: Coverage })[] | null>(
+    seed ? buildResults(seed, coverages) : null
+  );
+  const [searched, setSearched] = useState(seed.length > 0);
 
   const runSearch = useCallback(
     (raw: string) => {
       setSearched(true);
-      const match = findScenarioMatch(raw);
-      if (!match) {
-        setResults([]);
-        return;
-      }
-      setResults(
-        match.map((r) => ({
-          policyNo: r.policyNo,
-          relevance: r.relevance,
-          explanation: r.explanation,
-          coordination: r.coordination,
-          coverage: coverages.find((c) => c.policyNo === r.policyNo),
-        }))
-      );
+      setResults(buildResults(raw, coverages));
     },
     [coverages]
   );
