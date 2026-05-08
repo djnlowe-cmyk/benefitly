@@ -609,7 +609,7 @@ function ReviewForm({
           className={inputClass}
           value={fields.coverageLimit}
           onChange={(e) => patch('coverageLimit', e.target.value)}
-          placeholder="e.g. $500,000 dwelling / $250,000 personal property"
+          placeholder="e.g. £500,000 buildings / £75,000 contents"
         />
       </Field>
 

@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Coverage, Alert, FamilyMember, ViewId } from '@/types/coverage';
 import { SEED_TRANSACTIONS, SEED_ASSETS, SEED_CLAIMS } from '@/data/seed';
 import { useBreakpoint } from '@/lib/hooks';
+import { apiFetch } from '@/lib/api';
 import Sidebar from './Sidebar';
 import BottomTabBar from './BottomTabBar';
 import DashboardView from '@/components/dashboard/DashboardView';
@@ -65,109 +66,58 @@ export default function AppShell() {
 
   const unreadAlerts = useMemo(() => alerts.filter((a) => !a.read).length, [alerts]);
 
-  const loadCoverages = useCallback(async (showLoading = true) => {
+  const loadCoverages = useCallback(async (showLoading = true, signal?: AbortSignal) => {
     if (showLoading) setCoverageState('loading');
     try {
-      const res = await fetch('/api/coverages');
-      if (!res.ok) throw new Error(`Failed to load coverages (${res.status})`);
-      const data: Coverage[] = await res.json();
+      const data = await apiFetch<Coverage[]>('/api/coverages', { signal });
+      if (signal?.aborted) return;
       setCoverages(data);
       setCoverageError(null);
       setCoverageState('ready');
     } catch (e) {
+      if (signal?.aborted) return;
       setCoverageError(e instanceof Error ? e.message : 'Failed to load coverages');
       setCoverageState('error');
     }
   }, []);
 
-  const loadAlerts = useCallback(async (showLoading = true) => {
+  const loadAlerts = useCallback(async (showLoading = true, signal?: AbortSignal) => {
     if (showLoading) setAlertState('loading');
     try {
-      const res = await fetch('/api/alerts');
-      if (!res.ok) throw new Error(`Failed to load alerts (${res.status})`);
-      const data: Alert[] = await res.json();
+      const data = await apiFetch<Alert[]>('/api/alerts', { signal });
+      if (signal?.aborted) return;
       setAlerts(data);
       setAlertError(null);
       setAlertState('ready');
     } catch (e) {
+      if (signal?.aborted) return;
       setAlertError(e instanceof Error ? e.message : 'Failed to load alerts');
       setAlertState('error');
     }
   }, []);
 
-  const loadFamily = useCallback(async (showLoading = true) => {
+  const loadFamily = useCallback(async (showLoading = true, signal?: AbortSignal) => {
     if (showLoading) setFamilyState('loading');
     try {
-      const res = await fetch('/api/family');
-      if (!res.ok) throw new Error(`Failed to load family (${res.status})`);
-      const data: FamilyMember[] = await res.json();
+      const data = await apiFetch<FamilyMember[]>('/api/family', { signal });
+      if (signal?.aborted) return;
       setFamily(data);
       setFamilyError(null);
       setFamilyState('ready');
     } catch (e) {
+      if (signal?.aborted) return;
       setFamilyError(e instanceof Error ? e.message : 'Failed to load family');
       setFamilyState('error');
     }
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const res = await fetch('/api/coverages');
-        if (cancelled) return;
-        if (!res.ok) throw new Error(`Failed to load coverages (${res.status})`);
-        const data: Coverage[] = await res.json();
-        if (cancelled) return;
-        setCoverages(data);
-        setCoverageError(null);
-        setCoverageState('ready');
-      } catch (e) {
-        if (cancelled) return;
-        setCoverageError(e instanceof Error ? e.message : 'Failed to load coverages');
-        setCoverageState('error');
-      }
-    })();
-
-    void (async () => {
-      try {
-        const res = await fetch('/api/alerts');
-        if (cancelled) return;
-        if (!res.ok) throw new Error(`Failed to load alerts (${res.status})`);
-        const data: Alert[] = await res.json();
-        if (cancelled) return;
-        setAlerts(data);
-        setAlertError(null);
-        setAlertState('ready');
-      } catch (e) {
-        if (cancelled) return;
-        setAlertError(e instanceof Error ? e.message : 'Failed to load alerts');
-        setAlertState('error');
-      }
-    })();
-
-    void (async () => {
-      try {
-        const res = await fetch('/api/family');
-        if (cancelled) return;
-        if (!res.ok) throw new Error(`Failed to load family (${res.status})`);
-        const data: FamilyMember[] = await res.json();
-        if (cancelled) return;
-        setFamily(data);
-        setFamilyError(null);
-        setFamilyState('ready');
-      } catch (e) {
-        if (cancelled) return;
-        setFamilyError(e instanceof Error ? e.message : 'Failed to load family');
-        setFamilyState('error');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    const ctrl = new AbortController();
+    void loadCoverages(true, ctrl.signal);
+    void loadAlerts(true, ctrl.signal);
+    void loadFamily(true, ctrl.signal);
+    return () => ctrl.abort();
+  }, [loadCoverages, loadAlerts, loadFamily]);
 
   const navigate = useCallback((view: ViewId) => {
     setActiveView(view);
