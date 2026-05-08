@@ -60,21 +60,18 @@ export default function Sidebar({ activeView, onNavigate, alertCount, coverageCo
           );
         })}
       </nav>
-      <button
-        onClick={() => onNavigate('account')}
-        className={clsx(
-          'flex items-center gap-2 w-full px-5 py-4 border-t border-gray-800 text-xs text-left transition-colors',
-          activeView === 'account' ? 'bg-gray-800' : 'bg-transparent hover:bg-gray-800/50'
-        )}
+      <a
+        href="/settings"
+        className="flex items-center gap-2 w-full px-5 py-4 border-t border-gray-800 text-xs text-left transition-colors no-underline bg-transparent hover:bg-gray-800/50"
       >
         <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-gray-300 text-xs font-semibold">
           DL
         </div>
         <div>
-          <div className="text-gray-300 font-medium">David Lowe</div>
-          <div className="text-[11px] text-gray-500">Personal + Business</div>
+          <div className="text-gray-300 font-medium">Settings</div>
+          <div className="text-[11px] text-gray-500">Region & account</div>
         </div>
-      </button>
+      </a>
     </div>
   );
 }

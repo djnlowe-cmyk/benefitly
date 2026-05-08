@@ -1,34 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireUserId } from '@/lib/session';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { getDocumentStorage } from '@/lib/storage';
 
-const UPLOAD_DIR = join(process.cwd(), 'uploads');
+// Builds an extraction prompt parameterised by the user's region. v1 ships
+// with a tuned UK prompt; other locales fall back to a generic prompt that
+// still asks the model to record the source currency / region cues.
+function buildExtractionPrompt(country: string, currency: string) {
+  const isUK = country === 'GB';
+  const ukGuidance = isUK
+    ? `
+This document is from a UK customer. Apply UK conventions:
+- Money is in pounds sterling (£, GBP). Strip any £ when populating numeric fields.
+- Use UK insurer terminology: "excess" (not "deductible"), "buildings & contents" (not "homeowner's"), "motor" (not "auto"), "private medical" (not "PPO"), "income protection" (not "disability").
+- For credit card benefits, surface Section 75 (joint liability with retailer for £100–£30,000 purchases) and chargeback rights where relevant.
+- Health policies typically sit alongside the NHS — note this in the summary if the document refers to it.
+- Common UK insurers to recognise: Aviva, Direct Line, LV=, Admiral, More Than, Bupa, AXA, Hiscox, Legal & General, Petplan, Halifax, HSBC, Barclays, NatWest, Lloyds, Monzo, Starling, RSA.
+- FCA-authorised firms cite an FRN — capture into policyNo if present.
+`
+    : `
+The user's country is ${country} and currency is ${currency}. Use local conventions where possible.
+`;
 
-// The extraction prompt for Claude
-const EXTRACTION_PROMPT = `You are a document parser for Benefitly, a coverage management application. 
+  return `You are a document parser for Benefitly, a coverage management application.
 Extract the following structured fields from this insurance policy, warranty, or coverage document.
 Return ONLY valid JSON with no markdown formatting.
-
+${ukGuidance}
 Required fields:
 {
-  "provider": "Name of the insurance company, warranty provider, or card issuer",
-  "type": "Type of coverage (e.g. Health Insurance, Auto Insurance, AppleCare+, Credit Card Benefits)",
+  "provider": "Name of the insurer, warranty provider, or card issuer",
+  "type": "Type of cover (e.g. Private Medical Insurance, Comprehensive Motor Insurance, AppleCare+, Card Benefits / Section 75)",
   "category": "One of: health, dental, vision, life, disability, auto, home, travel, pet, warranty, creditcard, business",
-  "policyNo": "Policy number, member ID, or account number",
+  "policyNo": "Policy number, membership number, FRN, or account reference",
   "covered": ["List of covered people, vehicles, properties, or items"],
   "startDate": "YYYY-MM-DD",
   "endDate": "YYYY-MM-DD or 'Ongoing'",
   "premium": 0,
   "deductible": 0,
   "oopMax": null,
-  "limit": "Coverage limit description",
-  "coInsurance": "Co-insurance terms or null",
+  "limit": "Cover limit description (use the document's wording, including currency symbol)",
+  "coInsurance": "Co-insurance / excess split or null",
   "exclusions": ["List of exclusions"],
   "claimPhone": "Claims phone number",
   "claimUrl": "Claims website URL",
-  "summary": "One-sentence plain-language summary of what this coverage does",
+  "summary": "One-sentence plain-language summary of what this cover does, in the user's region",
   "confidence": 0.0 to 1.0
 }
 
@@ -38,6 +53,7 @@ Set confidence to:
 - Below 0.7 if the document is unclear, damaged, or missing key information
 
 For any field you cannot find, use null (for strings/numbers) or empty array (for arrays).`;
+}
 
 export async function POST(req: NextRequest) {
   const session = await requireUserId();
@@ -69,13 +85,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Save file to disk
-    await mkdir(UPLOAD_DIR, { recursive: true });
+    // Look up the user's region so the extraction prompt can be tuned for it.
+    const userRegion = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { country: true, currency: true },
+    });
+    const country = userRegion?.country || 'GB';
+    const currency = userRegion?.currency || 'GBP';
+
+    // Persist the file via the storage backend (Vercel Blob in prod, local
+    // disk in dev). Vercel's runtime filesystem is read-only outside /tmp,
+    // so a direct fs.writeFile under process.cwd() would EROFS at request time.
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-    const filepath = join(UPLOAD_DIR, filename);
-    await writeFile(filepath, buffer);
+    const stored = await getDocumentStorage().put({
+      userId,
+      filename: file.name,
+      contentType: file.type,
+      body: buffer,
+    });
 
     // Create document record
     const document = await prisma.document.create({
@@ -83,7 +111,7 @@ export async function POST(req: NextRequest) {
         filename: file.name,
         mimeType: file.type,
         size: file.size,
-        storagePath: filepath,
+        storagePath: stored.storagePath,
         userId,
       },
     });
@@ -112,7 +140,7 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        content.push({ type: 'text', text: EXTRACTION_PROMPT });
+        content.push({ type: 'text', text: buildExtractionPrompt(country, currency) });
 
         const response = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
