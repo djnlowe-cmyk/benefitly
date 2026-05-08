@@ -260,7 +260,7 @@ export default function DocumentUploadView({ onSaved, onCancel }: DocumentUpload
       };
 
       if (coverageId) {
-        res = await fetch(`/api/coverages?id=${encodeURIComponent(coverageId)}`, {
+        res = await fetch(`/api/coverages/${encodeURIComponent(coverageId)}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -313,7 +313,7 @@ export default function DocumentUploadView({ onSaved, onCancel }: DocumentUpload
   const handleDiscard = useCallback(async () => {
     if (coverageId) {
       try {
-        await fetch(`/api/coverages?id=${encodeURIComponent(coverageId)}`, { method: 'DELETE' });
+        await fetch(`/api/coverages/${encodeURIComponent(coverageId)}`, { method: 'DELETE' });
       } catch (e) {
         console.error('Failed to discard draft coverage', e);
       }

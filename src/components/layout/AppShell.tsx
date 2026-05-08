@@ -203,13 +203,18 @@ export default function AppShell() {
     setSelectedCoverage(coverage);
   }, []);
 
+  const handleUpdateCoverage = useCallback((updated: Coverage) => {
+    setCoverages((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    setSelectedCoverage((prev) => (prev && prev.id === updated.id ? updated : prev));
+  }, []);
+
   const handleDeleteCoverage = useCallback(
     async (id: string) => {
       const previous = coverages;
       setCoverages((prev) => prev.filter((c) => c.id !== id));
       setSelectedCoverage(null);
       try {
-        await apiFetch<{ deleted: true }>(`/api/coverages?id=${encodeURIComponent(id)}`, {
+        await apiFetch<{ deleted: true }>(`/api/coverages/${encodeURIComponent(id)}`, {
           method: 'DELETE',
         });
       } catch (e) {
@@ -287,6 +292,7 @@ export default function AppShell() {
           coverage={selectedCoverage}
           onBack={() => setSelectedCoverage(null)}
           onDelete={handleDeleteCoverage}
+          onUpdate={handleUpdateCoverage}
           isMobile={bp.isMobile}
         />
       );

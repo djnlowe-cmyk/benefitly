@@ -68,6 +68,25 @@ export interface Coverage {
   claimPhone: string | null;
   claimUrl: string | null;
   summary: string | null;
+  // Optional in the SPA list response. Present when the coverage was created
+  // from an upload; null for hand-entered coverages. confidence is the parser's
+  // self-reported score (0–1) and drives the "needs review" banner on detail.
+  documentId?: string | null;
+  confidence?: number | null;
+}
+
+// Returned by GET /api/coverages/:id only — joins the source document.
+// `url` is the public URL when storage is Vercel Blob; null when the document
+// is on the local-disk dev backend (no public-readable URL).
+export interface CoverageDocument {
+  id: string;
+  filename: string;
+  mimeType: string;
+  url: string | null;
+}
+
+export interface CoverageDetailResponse extends Coverage {
+  document: CoverageDocument | null;
 }
 
 export interface CategoryMeta {
