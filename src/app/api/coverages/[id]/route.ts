@@ -91,6 +91,21 @@ export async function GET(_req: Request, ctx: RouteContext) {
     console.log(`[gap_fired] coverageId=${parsedTarget.id} gapKey=${gap.key} severity=${gap.severity}`);
   }
 
+  // Persisted equivalent of the [gap_fired] log: one row per detail-page
+  // load with the count of currently-visible gaps. Fire-and-forget so a
+  // write failure cannot break the user-facing read.
+  prisma.coverageDetailView
+    .create({
+      data: {
+        userId: session.userId,
+        coverageId: parsedTarget.id,
+        firedGapCount: visibleGaps.length,
+      },
+    })
+    .catch((err) => {
+      console.error('[coverage_detail_view] insert failed', err);
+    });
+
   return NextResponse.json({
     ...parsedTarget,
     gaps: visibleGaps,

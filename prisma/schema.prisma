@@ -25,6 +25,7 @@ model User {
   familyMembers FamilyMember[]
   documents     Document[]
   gapDismissals CoverageGapDismissal[]
+  coverageDetailViews CoverageDetailView[]
 }
 
 model FamilyMember {
@@ -67,6 +68,7 @@ model Coverage {
 
   alerts        Alert[]
   gapDismissals CoverageGapDismissal[]
+  detailViews   CoverageDetailView[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -87,6 +89,20 @@ model CoverageGapDismissal {
 
   @@unique([userId, coverageId, gapKey])
   @@index([userId, coverageId])
+}
+
+model CoverageDetailView {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coverageId     String
+  coverage       Coverage @relation(fields: [coverageId], references: [id], onDelete: Cascade)
+  firedGapCount  Int
+  viewedAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([coverageId])
+  @@index([viewedAt])
 }
 
 model Alert {
