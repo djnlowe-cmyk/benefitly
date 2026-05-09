@@ -38,6 +38,17 @@ npm run test:watch
 
 Vitest spins up an isolated SQLite database per run via `prisma db push` and exercises the API route handlers directly. The session-isolation suite seeds two users and asserts that no protected route, GET or mutating, will leak or mutate the other user's `Coverage`, `Alert`, `FamilyMember`, or `Document` rows.
 
+## Admin metrics
+
+`/admin/metrics/gaps` renders the coverage-gap engagement dashboard (fire snapshot, dismissals by reason, per-rule rates, engagement ratio). Access is gated by `ADMIN_USER_EMAILS`, a comma-separated allowlist of admin email addresses checked against the signed-in session:
+
+```bash
+# .env.local
+ADMIN_USER_EMAILS=admin@example.com,ops@example.com
+```
+
+Non-admin authed users get a 404 (the surface stays invisible). Anonymous users get a 401. The page is fed by `CoverageDetailView` rows written from `GET /api/coverages/[id]` and `CoverageGapDismissal` rows written from the dismiss endpoint — no third-party analytics. v1 measures engagement through dismissals only; action-clicks and rationale-expansion are not yet captured (tracked in [ALI-88](/ALI/issues/ALI-88)).
+
 ## Authentication & data isolation
 
 - NextAuth v5 (credentials + bcrypt) with JWT sessions; the `userId` is exposed on `session.user.id`.
