@@ -116,7 +116,7 @@ describe('renewal alert on coverage save', () => {
 
   it('POST with endDate 60d out creates no renewal alert', async () => {
     asUser(fixture.userA!);
-    const res = await coveragesPOST(postCoverage({ endDate: daysFromNow(60) }));
+    const res = await coveragesPOST(postCoverage(coverageBody({ endDate: daysFromNow(60) })));
     expect(res.status).toBe(201);
     const created = await res.json();
 
@@ -128,7 +128,7 @@ describe('renewal alert on coverage save', () => {
 
   it('POST with endDate already in the past creates no renewal alert', async () => {
     asUser(fixture.userA!);
-    const res = await coveragesPOST(postCoverage({ endDate: daysFromNow(-7) }));
+    const res = await coveragesPOST(postCoverage(coverageBody({ endDate: daysFromNow(-7) })));
     expect(res.status).toBe(201);
     const created = await res.json();
 
@@ -140,7 +140,9 @@ describe('renewal alert on coverage save', () => {
 
   it('PATCH that does not include endDate does not create a duplicate alert', async () => {
     asUser(fixture.userA!);
-    const created = await (await coveragesPOST(postCoverage({ endDate: daysFromNow(14) }))).json();
+    const created = await (
+      await coveragesPOST(postCoverage(coverageBody({ endDate: daysFromNow(14) })))
+    ).json();
     expect(
       await prisma.alert.count({ where: { coverageId: created.id, type: 'renewal' } }),
     ).toBe(1);
@@ -157,7 +159,7 @@ describe('renewal alert on coverage save', () => {
   it('PATCH that re-sets the same in-window endDate is idempotent', async () => {
     asUser(fixture.userA!);
     const endDate = daysFromNow(14);
-    const created = await (await coveragesPOST(postCoverage({ endDate }))).json();
+    const created = await (await coveragesPOST(postCoverage(coverageBody({ endDate })))).json();
     expect(
       await prisma.alert.count({ where: { coverageId: created.id, type: 'renewal' } }),
     ).toBe(1);
@@ -173,7 +175,9 @@ describe('renewal alert on coverage save', () => {
 
   it('PATCH that pulls endDate from 60d into 14d creates the alert', async () => {
     asUser(fixture.userA!);
-    const created = await (await coveragesPOST(postCoverage({ endDate: daysFromNow(60) }))).json();
+    const created = await (
+      await coveragesPOST(postCoverage(coverageBody({ endDate: daysFromNow(60) })))
+    ).json();
     expect(
       await prisma.alert.count({ where: { coverageId: created.id, type: 'renewal' } }),
     ).toBe(0);
@@ -192,12 +196,16 @@ describe('renewal alert on coverage save', () => {
   it('renewal alerts are isolated to the owning user', async () => {
     asUser(fixture.userA!);
     const aCreated = await (
-      await coveragesPOST(postCoverage({ provider: 'Aviva', endDate: daysFromNow(14) }))
+      await coveragesPOST(
+        postCoverage(coverageBody({ provider: 'Aviva', endDate: daysFromNow(14) })),
+      )
     ).json();
 
     asUser(fixture.userB!);
     const bCreated = await (
-      await coveragesPOST(postCoverage({ provider: 'Direct Line', endDate: daysFromNow(14) }))
+      await coveragesPOST(
+        postCoverage(coverageBody({ provider: 'Direct Line', endDate: daysFromNow(14) })),
+      )
     ).json();
 
     asUser(fixture.userA!);
