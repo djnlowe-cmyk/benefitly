@@ -1,7 +1,7 @@
 'use client';
 
 import { Coverage } from '@/types/coverage';
-import { CATEGORIES, STATUS_STYLES } from '@/data/categories';
+import { STATUS_STYLES, resolveCategory } from '@/data/categories';
 import { formatCurrency } from '@/lib/format';
 
 interface CoverageCardProps {
@@ -10,7 +10,7 @@ interface CoverageCardProps {
 }
 
 export default function CoverageCard({ coverage, onClick }: CoverageCardProps) {
-  const cat = CATEGORIES[coverage.category];
+  const cat = resolveCategory(coverage.category);
   const st = STATUS_STYLES[coverage.status];
 
   return (

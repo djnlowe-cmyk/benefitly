@@ -21,3 +21,19 @@ export const STATUS_STYLES: Record<CoverageStatus, StatusStyle> = {
   expired:  { color: '#dc2626', bg: '#fef2f2', label: 'Expired' },
   pending:  { color: '#6b7280', bg: '#f3f4f6', label: 'Claim Pending' },
 };
+
+// Defensive lookup: Coverage.category is typed `CoverageCategory` but is
+// stored as a free string in Prisma and accepted by Zod as any non-empty
+// string, so the AI parser can produce off-enum values (e.g. "car") that
+// would crash the React tree if dereferenced via CATEGORIES[key].label.
+// Use this helper at every render site that reads a coverage's category.
+export function resolveCategory(key: string): CategoryMeta {
+  return (
+    (CATEGORIES as Record<string, CategoryMeta | undefined>)[key] ?? {
+      label: key,
+      color: '#6b7280',
+      bg: '#f3f4f6',
+      icon: '?',
+    }
+  );
+}

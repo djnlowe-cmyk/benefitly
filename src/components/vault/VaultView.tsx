@@ -1,7 +1,7 @@
 'use client';
 
 import { Coverage } from '@/types/coverage';
-import { CATEGORIES } from '@/data/categories';
+import { resolveCategory } from '@/data/categories';
 import { formatDate } from '@/lib/format';
 
 interface VaultViewProps {
@@ -21,7 +21,7 @@ export default function VaultView({ coverages, isMobile = false }: VaultViewProp
 
       <div className="space-y-3">
         {coverages.map((c) => {
-          const cat = CATEGORIES[c.category];
+          const cat = resolveCategory(c.category);
           return (
             <div key={c.id} className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-3">
               <div

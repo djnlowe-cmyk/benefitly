@@ -1,6 +1,7 @@
 'use client';
 
 import { Alert } from '@/types/coverage';
+import { resolveSeverity } from '@/data/severity';
 import { formatDate } from '@/lib/format';
 
 interface AlertsViewProps {
@@ -8,19 +9,12 @@ interface AlertsViewProps {
   onMarkRead: (id: string) => void;
 }
 
-const SEVERITY_STYLES = {
-  warning: { color: '#d97706', bg: '#fffbeb', icon: '⚠' },
-  info: { color: '#2563eb', bg: '#eff6ff', icon: 'ℹ' },
-  tip: { color: '#059669', bg: '#ecfdf5', icon: '💡' },
-  urgent: { color: '#dc2626', bg: '#fef2f2', icon: '🔴' },
-};
-
 export default function AlertsView({ alerts, onMarkRead }: AlertsViewProps) {
   const unread = alerts.filter((a) => !a.read);
   const read = alerts.filter((a) => a.read);
 
   const renderAlert = (alert: Alert) => {
-    const sev = SEVERITY_STYLES[alert.severity];
+    const sev = resolveSeverity(alert.severity);
     return (
       <div
         key={alert.id}

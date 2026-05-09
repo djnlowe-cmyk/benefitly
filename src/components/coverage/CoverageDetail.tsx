@@ -7,7 +7,7 @@ import {
   CoverageDetailResponse,
   CoverageDocument,
 } from '@/types/coverage';
-import { CATEGORIES, STATUS_STYLES } from '@/data/categories';
+import { CATEGORIES, STATUS_STYLES, resolveCategory } from '@/data/categories';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { apiFetch, ApiError } from '@/lib/api';
 
@@ -130,7 +130,7 @@ export default function CoverageDetail({
     return () => ctrl.abort();
   }, [coverage.id]);
 
-  const cat = CATEGORIES[current.category];
+  const cat = resolveCategory(current.category);
   const st = STATUS_STYLES[current.status];
   const lowConfidence =
     current.confidence != null && current.confidence < LOW_CONFIDENCE_THRESHOLD;
@@ -423,7 +423,7 @@ function EditCard({
           >
             {ALL_CATEGORY_KEYS.map((key) => (
               <option key={key} value={key}>
-                {CATEGORIES[key].label}
+                {resolveCategory(key).label}
               </option>
             ))}
           </select>
