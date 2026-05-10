@@ -9,7 +9,11 @@ import { PrismaClient } from '@prisma/client';
 import {
   buildAccountExportZip,
   checkExportRateLimit,
+  decodeAuditMetadata,
+  encodeAuditMetadata,
   EXPORT_AUDIT_ACTION,
+  extractRequestContext,
+  reserveExportSlot,
 } from '../src/lib/account-export';
 
 let tmpRoot: string;
@@ -193,6 +197,102 @@ test('buildAccountExportZip records a MISSING marker if blob is unreadable', asy
 
   const zip = await JSZip.loadAsync(result.buffer);
   assert.ok(zip.file(`documents/${document.id}.MISSING.txt`), 'expected MISSING marker');
+});
+
+test('extractRequestContext picks left-most x-forwarded-for and the user agent', () => {
+  const req = new Request('http://localhost/api/account/export', {
+    headers: {
+      'x-forwarded-for': '203.0.113.7, 10.0.0.1',
+      'user-agent': 'TestAgent/1.0',
+    },
+  });
+  const ctx = extractRequestContext(req);
+  assert.equal(ctx.ipAddress, '203.0.113.7');
+  assert.equal(ctx.userAgent, 'TestAgent/1.0');
+});
+
+test('extractRequestContext falls back to x-real-ip and tolerates missing headers', () => {
+  const req1 = new Request('http://localhost/', { headers: { 'x-real-ip': '198.51.100.4' } });
+  assert.equal(extractRequestContext(req1).ipAddress, '198.51.100.4');
+
+  const req2 = new Request('http://localhost/');
+  const ctx = extractRequestContext(req2);
+  assert.equal(ctx.ipAddress, undefined);
+  assert.equal(ctx.userAgent, undefined);
+});
+
+test('audit metadata encode/decode roundtrip preserves outcome and request context', () => {
+  const enc = encodeAuditMetadata({
+    outcome: 'success',
+    ipAddress: '203.0.113.7',
+    userAgent: 'TestAgent/1.0',
+    documentCount: 3,
+    documentReadFailures: 0,
+  });
+  const decoded = decodeAuditMetadata(enc);
+  assert.deepEqual(decoded, {
+    outcome: 'success',
+    ipAddress: '203.0.113.7',
+    userAgent: 'TestAgent/1.0',
+    documentCount: 3,
+    documentReadFailures: 0,
+  });
+});
+
+test('reserveExportSlot writes a started audit row capturing ip + user agent', async () => {
+  const user = await prisma.user.create({
+    data: {
+      email: `reserve-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
+      name: 'Reserve User',
+      passwordHash: 'x',
+    },
+  });
+
+  const reservation = await reserveExportSlot(user.id, prisma, {
+    ipAddress: '203.0.113.7',
+    userAgent: 'AcceptanceAgent/2.0',
+  });
+  assert.equal(reservation.allowed, true);
+  if (!reservation.allowed) return;
+
+  const row = await prisma.auditLog.findUnique({ where: { id: reservation.auditRow.id } });
+  assert.ok(row, 'audit row created');
+  const meta = decodeAuditMetadata(row!.metadata);
+  assert.deepEqual(meta, {
+    outcome: 'started',
+    ipAddress: '203.0.113.7',
+    userAgent: 'AcceptanceAgent/2.0',
+  });
+});
+
+test('two concurrent reserveExportSlot calls produce exactly one allowed reservation', async () => {
+  const user = await prisma.user.create({
+    data: {
+      email: `concurrent-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
+      name: 'Concurrent User',
+      passwordHash: 'x',
+    },
+  });
+
+  const [a, b] = await Promise.all([
+    reserveExportSlot(user.id, prisma),
+    reserveExportSlot(user.id, prisma),
+  ]);
+
+  const allowed = [a, b].filter((r) => r.allowed);
+  const blocked = [a, b].filter((r) => !r.allowed);
+  assert.equal(allowed.length, 1, 'exactly one reservation allowed');
+  assert.equal(blocked.length, 1, 'exactly one reservation blocked');
+
+  // The blocked side gets a sane retry hint, and only a single audit row is on disk.
+  if (!blocked[0].allowed) {
+    assert.ok(blocked[0].retryAfterSeconds > 0);
+    assert.ok(blocked[0].retryAfterSeconds <= 3600);
+  }
+  const rows = await prisma.auditLog.findMany({
+    where: { userId: user.id, action: EXPORT_AUDIT_ACTION },
+  });
+  assert.equal(rows.length, 1, 'exactly one audit row written');
 });
 
 test('checkExportRateLimit allows first export and blocks within an hour', async () => {

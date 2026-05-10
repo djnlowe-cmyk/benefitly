@@ -1,10 +1,51 @@
 import { readFile } from 'fs/promises';
 import { extname } from 'path';
 import JSZip from 'jszip';
-import type { PrismaClient } from '@prisma/client';
+import type { AuditLog, PrismaClient } from '@prisma/client';
 
 export const EXPORT_AUDIT_ACTION = 'account_export';
 export const EXPORT_RATE_LIMIT_MS = 60 * 60 * 1000;
+
+export type AuditOutcome = 'started' | 'success' | 'failure';
+
+export type AuditMetadata = {
+  outcome: AuditOutcome;
+  ipAddress?: string;
+  userAgent?: string;
+  documentCount?: number;
+  documentReadFailures?: number;
+  error?: string;
+};
+
+export function encodeAuditMetadata(meta: AuditMetadata): string {
+  return JSON.stringify(meta);
+}
+
+export function decodeAuditMetadata(raw: string | null | undefined): AuditMetadata | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as AuditMetadata;
+  } catch {
+    return null;
+  }
+}
+
+export type RequestContext = {
+  ipAddress?: string;
+  userAgent?: string;
+};
+
+export function extractRequestContext(req: Request): RequestContext {
+  const fwd = req.headers.get('x-forwarded-for');
+  // x-forwarded-for can be a comma-separated list ("client, proxy1, proxy2");
+  // the left-most entry is the originating client.
+  const ipAddress = fwd ? fwd.split(',')[0].trim() : (req.headers.get('x-real-ip') ?? undefined);
+  const userAgent = req.headers.get('user-agent') ?? undefined;
+  return {
+    ipAddress: ipAddress || undefined,
+    userAgent: userAgent || undefined,
+  };
+}
 
 export const README_TEXT = `Benefitly — your data export
 =============================
@@ -170,4 +211,73 @@ export async function checkExportRateLimit(
     allowed: false,
     retryAfterSeconds: Math.ceil(retryAfterMs / 1000),
   };
+}
+
+// Single-process serialization for the rate-limit gate + audit-row write.
+// Two concurrent GETs would otherwise both pass `checkExportRateLimit` before
+// either created the audit row that flips the gate. Single-instance only —
+// not durable across replicas, but that matches our planned topology (single
+// SQLite-backed Next.js process). If we ever go multi-instance, swap this for
+// a serializable transaction or a unique partial index.
+const reservationLocks = new Map<string, Promise<unknown>>();
+
+async function withUserLock<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+  const prior = reservationLocks.get(userId);
+  let release!: () => void;
+  const next = new Promise<void>((r) => {
+    release = r;
+  });
+  reservationLocks.set(userId, next);
+  try {
+    if (prior) {
+      await prior.catch(() => {});
+    }
+    return await fn();
+  } finally {
+    release();
+    if (reservationLocks.get(userId) === next) {
+      reservationLocks.delete(userId);
+    }
+  }
+}
+
+export type ReserveExportSlotResult =
+  | { allowed: true; auditRow: AuditLog }
+  | { allowed: false; retryAfterSeconds: number };
+
+/**
+ * Atomically check the rate-limit and write the "started" audit row.
+ * Holding the per-user lock across both steps closes the TOCTOU window
+ * where two concurrent callers both passed the gate before either wrote
+ * the row that would have flipped it.
+ */
+export async function reserveExportSlot(
+  userId: string,
+  prisma: PrismaClient,
+  context: RequestContext = {},
+  nowOverride?: Date,
+): Promise<ReserveExportSlotResult> {
+  return withUserLock(userId, async () => {
+    // Capture `now` inside the lock, not at call time: a queued caller may
+    // have waited milliseconds for the prior reservation, and reading the
+    // wall clock here keeps the rate-limit window aligned with the audit row
+    // about to be (or just) written.
+    const now = nowOverride ?? new Date();
+    const rate = await checkExportRateLimit(userId, prisma, now);
+    if (!rate.allowed) return rate;
+
+    const auditRow = await prisma.auditLog.create({
+      data: {
+        userId,
+        action: EXPORT_AUDIT_ACTION,
+        byteCount: 0,
+        metadata: encodeAuditMetadata({
+          outcome: 'started',
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
+        }),
+      },
+    });
+    return { allowed: true, auditRow };
+  });
 }

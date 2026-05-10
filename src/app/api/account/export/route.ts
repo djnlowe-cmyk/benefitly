@@ -3,48 +3,44 @@ import { auth } from '@/lib/auth';
 import prisma from '@/lib/db';
 import {
   buildAccountExportZip,
-  checkExportRateLimit,
-  EXPORT_AUDIT_ACTION,
+  encodeAuditMetadata,
+  extractRequestContext,
+  reserveExportSlot,
 } from '@/lib/account-export';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
   }
   const userId = (session.user as unknown as { id: string }).id;
 
-  const rate = await checkExportRateLimit(userId, prisma);
-  if (!rate.allowed) {
+  const context = extractRequestContext(req);
+
+  // Reserves the rate-limit slot AND records SAR evidence up-front so an
+  // in-flight crash leaves a "started" row instead of vanishing. The gate-check
+  // and audit row insert run under a per-user lock to close the TOCTOU window
+  // identified on ALI-151.
+  const reservation = await reserveExportSlot(userId, prisma, context);
+  if (!reservation.allowed) {
     return new NextResponse(
       JSON.stringify({
         error: 'Export rate-limited; one export per hour per account.',
-        retryAfterSeconds: rate.retryAfterSeconds,
+        retryAfterSeconds: reservation.retryAfterSeconds,
       }),
       {
         status: 429,
         headers: {
           'Content-Type': 'application/json',
-          'Retry-After': String(rate.retryAfterSeconds),
+          'Retry-After': String(reservation.retryAfterSeconds),
         },
       },
     );
   }
-
-  // Reserve the rate-limit slot AND record SAR evidence up-front so an
-  // in-flight crash leaves a "started" row instead of vanishing. Per CTO
-  // review on ALI-128: privacy-by-default, prefer over-record to under-record.
-  const auditRow = await prisma.auditLog.create({
-    data: {
-      userId,
-      action: EXPORT_AUDIT_ACTION,
-      byteCount: 0,
-      metadata: JSON.stringify({ status: 'started' }),
-    },
-  });
+  const { auditRow } = reservation;
 
   let result;
   try {
@@ -54,13 +50,15 @@ export async function GET() {
     await prisma.auditLog.update({
       where: { id: auditRow.id },
       data: {
-        metadata: JSON.stringify({
-          status: 'failed',
+        metadata: encodeAuditMetadata({
+          outcome: 'failure',
+          ipAddress: context.ipAddress,
+          userAgent: context.userAgent,
           error: err instanceof Error ? err.message : String(err),
         }),
       },
     }).catch((updateErr) => {
-      console.error('[account-export] audit failed-status write also failed:', updateErr);
+      console.error('[account-export] audit failure-status write also failed:', updateErr);
     });
     return NextResponse.json({ error: 'Export failed' }, { status: 500 });
   }
@@ -69,8 +67,10 @@ export async function GET() {
     where: { id: auditRow.id },
     data: {
       byteCount: result.byteCount,
-      metadata: JSON.stringify({
-        status: 'success',
+      metadata: encodeAuditMetadata({
+        outcome: 'success',
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
         documentCount: result.documentCount,
         documentReadFailures: result.documentReadFailures,
       }),
