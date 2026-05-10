@@ -45,6 +45,9 @@ next-env.d.ts
 # uploads
 /uploads
 
+# admin DSR Art. 15 exports — operator-generated zips, never checked in
+/dsr-exports
+
 # prisma
 dev.db
 dev.db-journal
