@@ -37,6 +37,12 @@ function asAnonymous() {
   sessionMock.current = null;
 }
 
+// Real Next.js always passes a NextRequest to GET handlers; the apiLog wrapper
+// now reads req.method, so tests can no longer call the handlers bare-handed.
+function getReq(path: string): import('next/server').NextRequest {
+  return new Request(`http://localhost${path}`, { method: 'GET' }) as unknown as import('next/server').NextRequest;
+}
+
 beforeAll(async () => {
   const userA = await prisma.user.create({
     data: { email: 'alice@example.test', name: 'Alice', passwordHash: 'x' },
@@ -99,42 +105,42 @@ describe('unauthenticated requests', () => {
   it('returns 401 from every protected route when there is no session', async () => {
     asAnonymous();
 
-    expect((await coveragesGET()).status).toBe(401);
-    expect((await alertsGET()).status).toBe(401);
-    expect((await familyGET()).status).toBe(401);
+    expect((await coveragesGET(getReq('/api/coverages'))).status).toBe(401);
+    expect((await alertsGET(getReq('/api/alerts'))).status).toBe(401);
+    expect((await familyGET(getReq('/api/family'))).status).toBe(401);
   });
 });
 
 describe('cross-user data isolation', () => {
   it('GET /api/coverages only returns the caller-user rows', async () => {
     asUser(fixture.userA!);
-    const aRes = await coveragesGET();
+    const aRes = await coveragesGET(getReq('/api/coverages'));
     const aRows = await aRes.json();
     expect(aRows.map((r: { id: string }) => r.id)).toEqual([fixture.coverageA]);
 
     asUser(fixture.userB!);
-    const bRes = await coveragesGET();
+    const bRes = await coveragesGET(getReq('/api/coverages'));
     const bRows = await bRes.json();
     expect(bRows.map((r: { id: string }) => r.id)).toEqual([fixture.coverageB]);
   });
 
   it('GET /api/alerts only returns the caller-user rows', async () => {
     asUser(fixture.userA!);
-    const a = await (await alertsGET()).json();
+    const a = await (await alertsGET(getReq('/api/alerts'))).json();
     expect(a.map((r: { id: string }) => r.id)).toEqual([fixture.alertA]);
 
     asUser(fixture.userB!);
-    const b = await (await alertsGET()).json();
+    const b = await (await alertsGET(getReq('/api/alerts'))).json();
     expect(b.map((r: { id: string }) => r.id)).toEqual([fixture.alertB]);
   });
 
   it('GET /api/family only returns the caller-user rows', async () => {
     asUser(fixture.userA!);
-    const a = await (await familyGET()).json();
+    const a = await (await familyGET(getReq('/api/family'))).json();
     expect(a.map((r: { id: string }) => r.id)).toEqual([fixture.familyA]);
 
     asUser(fixture.userB!);
-    const b = await (await familyGET()).json();
+    const b = await (await familyGET(getReq('/api/family'))).json();
     expect(b.map((r: { id: string }) => r.id)).toEqual([fixture.familyB]);
   });
 });
