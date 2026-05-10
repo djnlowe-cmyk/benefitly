@@ -1,0 +1,6 @@
+# Corpus PDFs are user data — never commit. Files land via the founder
+# document intake job into bench/corpus/<category>/<id>.pdf or arrive in
+# the GCS bucket configured by BENCH_GCS_BUCKET.
+*
+!.gitignore
+!README.md

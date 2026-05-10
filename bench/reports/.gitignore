@@ -1,0 +1,4 @@
+# Latest run output — written every time bench/run.ts executes. Not committed
+# (the baseline in bench/baselines/ is the artifact of record).
+*
+!.gitignore

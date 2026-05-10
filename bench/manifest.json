@@ -1,0 +1,22 @@
+{
+  "manifestVersion": "1",
+  "expectedPromptVersion": "2026-05-10.v1",
+  "entries": [
+    {
+      "id": "home-001",
+      "category": "home",
+      "source": "fixture",
+      "storageKey": "home-001.json",
+      "groundTruthKey": "home-001.json",
+      "notes": "Inline UK buildings & contents — Aviva pattern. Smoke fixture, no real PDF."
+    },
+    {
+      "id": "creditcard-001",
+      "category": "creditcard",
+      "source": "fixture",
+      "storageKey": "creditcard-001.json",
+      "groundTruthKey": "creditcard-001.json",
+      "notes": "Inline UK Section-75 card benefits — HSBC pattern. Smoke fixture."
+    }
+  ]
+}

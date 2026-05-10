@@ -1,0 +1,29 @@
+{
+  "docId": "creditcard-001",
+  "category": "creditcard",
+  "promptVersion": "2026-05-10.v1",
+  "labeller": "coder@bot",
+  "labelledAt": "2026-05-10",
+  "fields": {
+    "provider": "HSBC",
+    "type": "Card Benefits / Section 75",
+    "category": "creditcard",
+    "policyNo": "HSBC-CARD-4421",
+    "covered": ["Cardholder", "Authorised additional cardholders"],
+    "startDate": "Ongoing",
+    "endDate": "Ongoing",
+    "premium": 0,
+    "deductible": null,
+    "oopMax": null,
+    "coverageLimit": "£100–£30,000 per Section 75 purchase",
+    "coInsurance": null,
+    "exclusions": [
+      "Single items under £100",
+      "Cash withdrawals",
+      "Purchases not made directly with the supplier"
+    ],
+    "claimPhone": "03457 404 404",
+    "claimUrl": "https://www.hsbc.co.uk/credit-cards/disputes/",
+    "summary": "Joint liability with the retailer for individual purchases between £100 and £30,000 charged to the card, plus chargeback rights for goods not received."
+  }
+}

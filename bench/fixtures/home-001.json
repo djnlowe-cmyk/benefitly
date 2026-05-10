@@ -1,0 +1,30 @@
+{
+  "model": "claude-sonnet-4-20250514",
+  "promptVersion": "2026-05-10.v1",
+  "latencyMs": 4210,
+  "costDeciPence": 92,
+  "errorCode": null,
+  "parsed": {
+    "provider": "Aviva",
+    "type": "Buildings & Contents",
+    "category": "home",
+    "policyNo": "AV-HOME-7723451",
+    "covered": ["Primary residence", "Contents up to £75,000"],
+    "startDate": "2026-01-15",
+    "endDate": "2027-01-14",
+    "premium": 38.42,
+    "deductible": 250,
+    "oopMax": null,
+    "coverageLimit": "£500,000 buildings / £75,000 contents",
+    "coInsurance": null,
+    "exclusions": [
+      "Wear and tear",
+      "Damage from unoccupied periods over 60 days",
+      "Flood damage in unmaintained properties"
+    ],
+    "claimPhone": "0345 030 6900",
+    "claimUrl": "https://www.aviva.co.uk/claim/home",
+    "summary": "Buildings and contents cover for the primary residence with a £250 excess and £500,000 / £75,000 limits, sitting alongside standard household liability protections.",
+    "confidence": 0.85
+  }
+}

@@ -1,0 +1,236 @@
+{
+  "reportVersion": "1",
+  "manifestVersion": "1",
+  "promptVersion": "2026-05-10.v1",
+  "totalDocs": 2,
+  "categories": [
+    {
+      "category": "home",
+      "docCount": 1,
+      "fields": {
+        "provider": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "type": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "category": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "policyNo": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "covered": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "startDate": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "endDate": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "premium": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "deductible": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "oopMax": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "coverageLimit": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "coInsurance": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "exclusions": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "claimPhone": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "claimUrl": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "summary": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        }
+      },
+      "worstFieldRate": 0,
+      "worstField": null,
+      "exceedsCeiling": false,
+      "enforcementSkippedReason": "only 1 of 5 docs scored — ceiling not enforced"
+    },
+    {
+      "category": "auto",
+      "docCount": 0,
+      "fields": {},
+      "worstFieldRate": 0,
+      "worstField": null,
+      "exceedsCeiling": false,
+      "enforcementSkippedReason": "no docs in category"
+    },
+    {
+      "category": "travel",
+      "docCount": 0,
+      "fields": {},
+      "worstFieldRate": 0,
+      "worstField": null,
+      "exceedsCeiling": false,
+      "enforcementSkippedReason": "no docs in category"
+    },
+    {
+      "category": "mobile-warranty",
+      "docCount": 0,
+      "fields": {},
+      "worstFieldRate": 0,
+      "worstField": null,
+      "exceedsCeiling": false,
+      "enforcementSkippedReason": "no docs in category"
+    },
+    {
+      "category": "whitegoods-warranty",
+      "docCount": 0,
+      "fields": {},
+      "worstFieldRate": 0,
+      "worstField": null,
+      "exceedsCeiling": false,
+      "enforcementSkippedReason": "no docs in category"
+    },
+    {
+      "category": "creditcard",
+      "docCount": 1,
+      "fields": {
+        "provider": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "type": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "category": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "policyNo": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "covered": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "startDate": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "endDate": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "premium": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "deductible": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "oopMax": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "coverageLimit": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "coInsurance": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "exclusions": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "claimPhone": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "claimUrl": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        },
+        "summary": {
+          "scoredDocs": 1,
+          "incorrectDocs": 0,
+          "correctionRate": 0
+        }
+      },
+      "worstFieldRate": 0,
+      "worstField": null,
+      "exceedsCeiling": false,
+      "enforcementSkippedReason": "only 1 of 5 docs scored — ceiling not enforced"
+    },
+    {
+      "category": "employer-benefits",
+      "docCount": 0,
+      "fields": {},
+      "worstFieldRate": 0,
+      "worstField": null,
+      "exceedsCeiling": false,
+      "enforcementSkippedReason": "no docs in category"
+    }
+  ],
+  "failedCategories": [],
+  "ceiling": 0.15,
+  "minDocsForEnforcement": 5
+}

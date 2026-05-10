@@ -1,0 +1,95 @@
+# Parse-quality benchmark — guards the 15% per-field correction-rate ceiling
+# on Day-1 categories. See bench/README.md for the contract and run cost.
+#
+# Triggers:
+#   - PRs that touch the parse pipeline or its schema fields. Fixture-mode
+#     run: free, fast, deterministic. CI fails if any Day-1 category exceeds
+#     the ceiling against the committed baseline.
+#   - Nightly run against `main` in --mode=live. Hits the real corpus + Claude.
+#     This is where regression cost is paid.
+#   - Manual dispatch for ad-hoc model/prompt experiments.
+#
+# Live mode is wired to expect ANTHROPIC_API_KEY + BENCH_GCS_BUCKET secrets
+# (provisioned in a separate ticket — see ALI-123 child issues).
+
+name: parse-quality-bench
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/ai/**'
+      - 'prisma/schema.prisma'
+      - 'bench/**'
+      - '.github/workflows/parse-quality-bench.yml'
+  schedule:
+    - cron: '0 3 * * *' # 03:00 UTC nightly
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'fixture | live'
+        required: false
+        default: 'fixture'
+      model:
+        description: 'Override the parse model (e.g. claude-haiku-4-5-20251001)'
+        required: false
+        default: 'claude-sonnet-4-20250514'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  bench:
+    name: parse-quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Decide mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "mode=live" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ inputs.mode }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "mode=fixture" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run benchmark
+        id: bench
+        env:
+          BENCH_STORAGE: gcs
+          BENCH_GCS_BUCKET: ${{ secrets.BENCH_GCS_BUCKET }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PARSE_MODEL: ${{ inputs.model || 'claude-sonnet-4-20250514' }}
+        run: |
+          set -e
+          npx tsx bench/run.ts \
+            --mode=${{ steps.mode.outputs.mode }} \
+            --model=$PARSE_MODEL
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parse-quality-report
+          path: bench/reports/
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'bench/reports/latest.md';
+            if (!fs.existsSync(path)) return;
+            const body = fs.readFileSync(path, 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
