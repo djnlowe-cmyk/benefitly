@@ -34,20 +34,43 @@ export async function GET() {
     );
   }
 
+  // Reserve the rate-limit slot AND record SAR evidence up-front so an
+  // in-flight crash leaves a "started" row instead of vanishing. Per CTO
+  // review on ALI-128: privacy-by-default, prefer over-record to under-record.
+  const auditRow = await prisma.auditLog.create({
+    data: {
+      userId,
+      action: EXPORT_AUDIT_ACTION,
+      byteCount: 0,
+      metadata: JSON.stringify({ status: 'started' }),
+    },
+  });
+
   let result;
   try {
     result = await buildAccountExportZip(userId, prisma);
   } catch (err) {
     console.error('[account-export] failed:', err);
+    await prisma.auditLog.update({
+      where: { id: auditRow.id },
+      data: {
+        metadata: JSON.stringify({
+          status: 'failed',
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      },
+    }).catch((updateErr) => {
+      console.error('[account-export] audit failed-status write also failed:', updateErr);
+    });
     return NextResponse.json({ error: 'Export failed' }, { status: 500 });
   }
 
-  await prisma.auditLog.create({
+  await prisma.auditLog.update({
+    where: { id: auditRow.id },
     data: {
-      userId,
-      action: EXPORT_AUDIT_ACTION,
       byteCount: result.byteCount,
       metadata: JSON.stringify({
+        status: 'success',
         documentCount: result.documentCount,
         documentReadFailures: result.documentReadFailures,
       }),
