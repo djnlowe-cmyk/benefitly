@@ -169,3 +169,14 @@ model Document {
 
   @@index([userId])
 }
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String
+  byteCount   Int      @default(0)
+  metadata    String?
+  requestedAt DateTime @default(now())
+
+  @@index([userId, action, requestedAt])
+}
