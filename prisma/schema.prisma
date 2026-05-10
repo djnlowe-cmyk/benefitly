@@ -207,3 +207,24 @@ model ConciergeQuery {
   @@index([userId])
   @@index([status])
 }
+
+// Append-only audit trail for signed-URL grants and proxy reads on
+// Document objects. Required by DPIA risk R-1 (ALI-139): every time we
+// hand bytes (or a token that fetches bytes) of a private policy doc to
+// a client, we record who, when, and how. mode is "signed_url" when we
+// mint a token, "proxy" when we stream bytes server-side, and "rekey"
+// for the lazy public→private migration. ip/userAgent are nullable
+// because we may not always have them (e.g. server-to-server) and they
+// are not used for anything beyond this audit trail.
+model DocumentAccessLog {
+  id         String   @id @default(cuid())
+  userId     String
+  documentId String
+  mode       String
+  ip         String?
+  userAgent  String?
+  grantedAt  DateTime @default(now())
+
+  @@index([documentId, grantedAt])
+  @@index([userId, grantedAt])
+}

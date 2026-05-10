@@ -6,6 +6,7 @@ import {
   CoverageCategory,
   CoverageDetailResponse,
   CoverageDocument,
+  DocumentSignedUrlResponse,
 } from '@/types/coverage';
 import { CATEGORIES, STATUS_STYLES, resolveCategory } from '@/data/categories';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -278,28 +279,7 @@ function ViewCard({
               value={coverage.premium > 0 ? `${formatCurrency(coverage.premium)}/month` : 'Included'}
             />
 
-            {document && (
-              <div className="mt-5">
-                <div className="text-[11px] text-gray-500 uppercase tracking-wider mb-1">
-                  Original document
-                </div>
-                {document.url ? (
-                  <a
-                    href={document.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline break-all"
-                  >
-                    {document.filename}
-                  </a>
-                ) : (
-                  <div className="text-sm text-gray-700">
-                    {document.filename}
-                    <span className="text-xs text-gray-400 ml-2">(stored locally)</span>
-                  </div>
-                )}
-              </div>
-            )}
+            {document && <DocumentLink document={document} />}
           </div>
           <div className={isMobile ? 'mt-5' : ''}>
             <h3 className="text-[13px] font-bold text-gray-900 m-0 mb-3.5 uppercase tracking-wider">
@@ -328,6 +308,55 @@ function ViewCard({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DocumentLink({ document }: { document: CoverageDocument }) {
+  const [opening, setOpening] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const open = useCallback(async () => {
+    setOpening(true);
+    setError(null);
+    try {
+      const data = await apiFetch<DocumentSignedUrlResponse>(
+        `/api/documents/${encodeURIComponent(document.id)}/url`,
+      );
+      // Open in a new tab. We resolve relative to window.location.origin so
+      // the rendered HTML never carries the document URL on first paint.
+      window.open(data.url, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      setError(
+        e instanceof ApiError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : 'Could not open document',
+      );
+    } finally {
+      setOpening(false);
+    }
+  }, [document.id]);
+
+  return (
+    <div className="mt-5">
+      <div className="text-[11px] text-gray-500 uppercase tracking-wider mb-1">
+        Original document
+      </div>
+      <button
+        type="button"
+        onClick={open}
+        disabled={opening}
+        className="text-sm text-blue-600 hover:underline break-all bg-transparent border-none p-0 cursor-pointer disabled:opacity-50 disabled:cursor-progress"
+      >
+        {opening ? 'Opening…' : document.filename}
+      </button>
+      {error && (
+        <div role="alert" className="mt-1 text-xs text-red-600">
+          {error}
+        </div>
+      )}
     </div>
   );
 }

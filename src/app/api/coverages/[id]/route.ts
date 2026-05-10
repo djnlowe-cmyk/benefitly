@@ -30,21 +30,21 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
     where: { id, userId: session.userId },
     include: {
       document: {
-        select: { id: true, filename: true, storagePath: true, mimeType: true },
+        select: { id: true, filename: true, mimeType: true },
       },
     },
   });
   if (!coverage) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const { document, ...rest } = coverage;
-  // The local-disk backend stores an absolute filesystem path that must not
-  // leak to the client; only expose storagePath when it is already a public URL.
+  // No `url` field — the storage URL is private and only ever materialised
+  // via /api/documents/[id]/url, which authenticates the caller and emits an
+  // audit log. See ALI-145 / DPIA R-1.
   const safeDocument = document
     ? {
         id: document.id,
         filename: document.filename,
         mimeType: document.mimeType,
-        url: /^https?:\/\//i.test(document.storagePath) ? document.storagePath : null,
       }
     : null;
 

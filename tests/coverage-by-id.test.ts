@@ -116,49 +116,32 @@ afterAll(async () => {
 });
 
 describe('GET /api/coverages/[id]', () => {
-  it('returns the coverage with document join when storage is a public URL', async () => {
+  it('returns the coverage with document join but no URL (DPIA R-1)', async () => {
     asUser(fixture.userA);
     const res = await coverageGET(getRequest(), ctx(fixture.coverageA));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.id).toBe(fixture.coverageA);
     expect(body.confidence).toBe(0.55);
+    // ALI-145: the document join must NOT include a `url` field — the client
+    // must call /api/documents/[id]/url to mint a short-lived signed URL.
     expect(body.document).toEqual({
       id: fixture.documentA,
       filename: 'policy.pdf',
       mimeType: 'application/pdf',
-      url: 'https://blob.example.com/users/alice/policy.pdf',
     });
+    expect(body.document).not.toHaveProperty('url');
+    expect(body.document).not.toHaveProperty('storagePath');
   });
 
-  it('does not leak local-disk storagePath as a URL', async () => {
-    const localDoc = await prisma.document.create({
-      data: {
-        filename: 'local.pdf',
-        mimeType: 'application/pdf',
-        size: 1024,
-        storagePath: '/var/uploads/users/alice/local.pdf',
-        userId: fixture.userA,
-      },
-    });
-    const cov = await prisma.coverage.create({
-      data: {
-        provider: 'X',
-        type: 'Y',
-        category: 'health',
-        covered: '[]',
-        startDate: '2026-01-01',
-        endDate: '2026-12-31',
-        exclusions: '[]',
-        documentId: localDoc.id,
-        userId: fixture.userA,
-      },
-    });
+  it('never includes a url field even when storagePath looks like a public blob', async () => {
+    // Even a doc whose storagePath is a (legacy) public URL must not leak it.
     asUser(fixture.userA);
-    const res = await coverageGET(getRequest(), ctx(cov.id));
+    const res = await coverageGET(getRequest(), ctx(fixture.coverageA));
     const body = await res.json();
-    expect(body.document.url).toBeNull();
-    expect(body.document.filename).toBe('local.pdf');
+    const serialised = JSON.stringify(body);
+    expect(serialised).not.toContain('https://blob.example.com');
+    expect(serialised).not.toContain('storagePath');
   });
 
   it('returns 401 when unauthenticated', async () => {

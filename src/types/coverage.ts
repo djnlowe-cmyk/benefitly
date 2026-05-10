@@ -76,13 +76,24 @@ export interface Coverage {
 }
 
 // Returned by GET /api/coverages/:id only — joins the source document.
-// `url` is the public URL when storage is Vercel Blob; null when the document
-// is on the local-disk dev backend (no public-readable URL).
+// We never expose a URL here: the storage location is private (DPIA R-1),
+// and the client must call GET /api/documents/[id]/url to mint a short-lived
+// signed URL when the user actually clicks the document link.
 export interface CoverageDocument {
   id: string;
   filename: string;
   mimeType: string;
-  url: string | null;
+}
+
+// Response shape of GET /api/documents/[id]/url. `url` is a relative path
+// to /api/documents/[id]/content with an HMAC token query param embedded;
+// the browser can use it directly as an <a href> or fetch().
+export interface DocumentSignedUrlResponse {
+  url: string;
+  expiresAt: string; // ISO timestamp
+  ttlSeconds: number;
+  filename: string;
+  mimeType: string;
 }
 
 export interface CoverageDetailResponse extends Coverage {
