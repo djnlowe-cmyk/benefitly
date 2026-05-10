@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireUserId } from '@/lib/session';
+import { withApiLogging, setRequestUserId } from '@/lib/apiLog';
 
 const QUERY_MAX = 500;
 const EXPECTED_MAX = 2_000;
 
-export async function POST(req: NextRequest) {
+export const POST = withApiLogging(async (req: NextRequest) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
+  setRequestUserId(req, session.userId);
 
   let body: unknown;
   try {
@@ -45,4 +47,4 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ ok: true });
-}
+}, { route: 'search.concierge' });

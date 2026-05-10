@@ -4,10 +4,12 @@ import { requireUserId } from '@/lib/session';
 import { ensureRenewalAlert } from '@/lib/alerts/renewal';
 import { parseJsonBody } from '@/lib/validation';
 import { coverageCreateSchema, coveragePatchSchema } from '@/lib/schemas/coverage';
+import { withApiLogging, setRequestUserId } from '@/lib/apiLog';
 
-export async function GET() {
+export const GET = withApiLogging(async (req: NextRequest) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
+  setRequestUserId(req, session.userId);
 
   const coverages = await prisma.coverage.findMany({
     where: { userId: session.userId },
@@ -21,11 +23,12 @@ export async function GET() {
   }));
 
   return NextResponse.json(parsed);
-}
+}, { route: 'coverages.list' });
 
-export async function POST(req: NextRequest) {
+export const POST = withApiLogging(async (req: NextRequest) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
+  setRequestUserId(req, session.userId);
 
   const parsed = await parseJsonBody(req, coverageCreateSchema);
   if (!parsed.ok) return parsed.response;
@@ -77,11 +80,12 @@ export async function POST(req: NextRequest) {
     covered: JSON.parse(coverage.covered),
     exclusions: JSON.parse(coverage.exclusions),
   }, { status: 201 });
-}
+}, { route: 'coverages.list' });
 
-export async function PATCH(req: NextRequest) {
+export const PATCH = withApiLogging(async (req: NextRequest) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
+  setRequestUserId(req, session.userId);
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
@@ -139,11 +143,12 @@ export async function PATCH(req: NextRequest) {
     covered: JSON.parse(updated.covered),
     exclusions: JSON.parse(updated.exclusions),
   });
-}
+}, { route: 'coverages.list' });
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withApiLogging(async (req: NextRequest) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
+  setRequestUserId(req, session.userId);
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
@@ -155,4 +160,4 @@ export async function DELETE(req: NextRequest) {
 
   await prisma.coverage.delete({ where: { id } });
   return NextResponse.json({ deleted: true });
-}
+}, { route: 'coverages.list' });

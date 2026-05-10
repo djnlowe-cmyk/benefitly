@@ -6,6 +6,7 @@ import {
   type SearchCoveragePromptRow,
   type SearchHit,
 } from '@/lib/search/coverageSearch';
+import { withApiLogging, setRequestUserId } from '@/lib/apiLog';
 
 // Frontend response shape. Keeps the route thin: route handles auth/db; the
 // boundary fn handles the AI call + JSON parsing. We enrich each hit with
@@ -26,9 +27,10 @@ interface SearchResponseBody {
 
 const QUERY_MAX = 500;
 
-export async function POST(req: NextRequest) {
+export const POST = withApiLogging(async (req: NextRequest) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
+  setRequestUserId(req, session.userId);
 
   let body: unknown;
   try {
@@ -153,4 +155,4 @@ export async function POST(req: NextRequest) {
     .catch((err) => console.error('searchEvent insert failed', err));
 
   return NextResponse.json(responseBody);
-}
+}, { route: 'search' });

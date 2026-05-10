@@ -4,6 +4,7 @@ import { requireUserId } from '@/lib/session';
 import { ensureRenewalAlert } from '@/lib/alerts/renewal';
 import { parseJsonBody } from '@/lib/validation';
 import { coveragePatchSchema } from '@/lib/schemas/coverage';
+import { withApiLogging, setRequestUserId } from '@/lib/apiLog';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -21,9 +22,10 @@ function serialise(coverage: {
   };
 }
 
-export async function GET(_req: NextRequest, ctx: RouteContext) {
+export const GET = withApiLogging(async (req: NextRequest, ctx: RouteContext) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
+  setRequestUserId(req, session.userId);
 
   const { id } = await ctx.params;
   const coverage = await prisma.coverage.findFirst({
@@ -49,11 +51,12 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
     : null;
 
   return NextResponse.json({ ...serialise(rest), document: safeDocument });
-}
+}, { route: 'coverages.byId' });
 
-export async function PATCH(req: NextRequest, ctx: RouteContext) {
+export const PATCH = withApiLogging(async (req: NextRequest, ctx: RouteContext) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
+  setRequestUserId(req, session.userId);
 
   const { id } = await ctx.params;
   const existing = await prisma.coverage.findFirst({ where: { id, userId: session.userId } });
@@ -104,11 +107,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   }
 
   return NextResponse.json(serialise(updated));
-}
+}, { route: 'coverages.byId' });
 
-export async function DELETE(_req: NextRequest, ctx: RouteContext) {
+export const DELETE = withApiLogging(async (req: NextRequest, ctx: RouteContext) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
+  setRequestUserId(req, session.userId);
 
   const { id } = await ctx.params;
   const existing = await prisma.coverage.findFirst({ where: { id, userId: session.userId } });
@@ -116,4 +120,4 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext) {
 
   await prisma.coverage.delete({ where: { id } });
   return NextResponse.json({ deleted: true });
-}
+}, { route: 'coverages.byId' });

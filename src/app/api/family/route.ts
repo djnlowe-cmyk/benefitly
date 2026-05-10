@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireUserId } from '@/lib/session';
 import { parseJsonBody, z } from '@/lib/validation';
+import { withApiLogging, setRequestUserId } from '@/lib/apiLog';
 
 const familyCreateSchema = z.object({
   name: z.string().min(1),
@@ -10,17 +11,19 @@ const familyCreateSchema = z.object({
   relation: z.string().min(1),
 });
 
-export async function GET() {
+export const GET = withApiLogging(async (req: NextRequest) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
+  setRequestUserId(req, session.userId);
 
   const members = await prisma.familyMember.findMany({ where: { userId: session.userId } });
   return NextResponse.json(members);
-}
+}, { route: 'family' });
 
-export async function POST(req: NextRequest) {
+export const POST = withApiLogging(async (req: NextRequest) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
+  setRequestUserId(req, session.userId);
 
   const parsed = await parseJsonBody(req, familyCreateSchema);
   if (!parsed.ok) return parsed.response;
@@ -36,11 +39,12 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json(member, { status: 201 });
-}
+}, { route: 'family' });
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withApiLogging(async (req: NextRequest) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
+  setRequestUserId(req, session.userId);
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
@@ -52,4 +56,4 @@ export async function DELETE(req: NextRequest) {
 
   await prisma.familyMember.delete({ where: { id } });
   return NextResponse.json({ deleted: true });
-}
+}, { route: 'family' });

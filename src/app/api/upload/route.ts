@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireUserId } from '@/lib/session';
 import { getDocumentStorage } from '@/lib/storage';
+import { withApiLogging, setRequestUserId } from '@/lib/apiLog';
 
 // Builds an extraction prompt parameterised by the user's region. v1 ships
 // with a tuned UK prompt; other locales fall back to a generic prompt that
@@ -55,11 +56,12 @@ Set confidence to:
 For any field you cannot find, use null (for strings/numbers) or empty array (for arrays).`;
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withApiLogging(async (req: NextRequest) => {
   const session = await requireUserId();
   if (!session.ok) return session.response;
 
   const userId = session.userId;
+  setRequestUserId(req, userId);
 
   try {
     const formData = await req.formData();
@@ -230,4 +232,4 @@ export async function POST(req: NextRequest) {
     console.error('Upload failed:', error instanceof Error ? error.message : 'unknown');
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
-}
+}, { route: 'upload' });
