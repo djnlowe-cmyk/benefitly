@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireUserId } from '@/lib/session';
 import { getDocumentStorage } from '@/lib/storage';
+import { recordClaudeCallAwait, type ClaudeUsageBlock } from '@/lib/claudeUsage';
+
+const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 
 // Builds an extraction prompt parameterised by the user's region. v1 ships
 // with a tuned UK prompt; other locales fall back to a generic prompt that
@@ -119,6 +122,8 @@ export async function POST(req: NextRequest) {
     // Call Claude API for extraction
     let parsedData = null;
     let confidence = null;
+    let claudeUsage: ClaudeUsageBlock | null = null;
+    let claudeCallSucceeded = false;
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (apiKey && apiKey !== 'your-api-key-here') {
@@ -150,7 +155,7 @@ export async function POST(req: NextRequest) {
             'anthropic-version': '2023-06-01',
           },
           body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
+            model: CLAUDE_MODEL,
             max_tokens: 2048,
             messages: [{ role: 'user', content }],
           }),
@@ -158,6 +163,8 @@ export async function POST(req: NextRequest) {
 
         if (response.ok) {
           const result = await response.json();
+          claudeUsage = (result?.usage ?? null) as ClaudeUsageBlock | null;
+          claudeCallSucceeded = true;
           const text = result.content?.[0]?.text || '';
 
           // Parse JSON from response (handle potential markdown wrapping)
@@ -170,6 +177,19 @@ export async function POST(req: NextRequest) {
       } catch (parseError) {
         console.error('AI parsing failed:', parseError instanceof Error ? parseError.message : 'unknown');
         // Continue without parsed data — user can enter manually
+      }
+
+      // Record cost even on JSON-parse failure: the Claude call still spent
+      // tokens. Skip only when the upstream call itself never succeeded.
+      if (claudeCallSucceeded) {
+        await recordClaudeCallAwait({
+          userId,
+          documentId: document.id,
+          task: 'parse',
+          model: CLAUDE_MODEL,
+          usage: claudeUsage,
+          successful: parsedData !== null,
+        });
       }
     }
 

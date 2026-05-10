@@ -6,6 +6,7 @@ import {
   type SearchCoveragePromptRow,
   type SearchHit,
 } from '@/lib/search/coverageSearch';
+import { computeCost, recordClaudeCall } from '@/lib/claudeUsage';
 
 // Frontend response shape. Keeps the route thin: route handles auth/db; the
 // boundary fn handles the AI call + JSON parsing. We enrich each hit with
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
     currency: user?.currency ?? 'GBP',
   };
 
-  const { results, gapAnswer } = await searchCoverages({
+  const { results, gapAnswer, usage, model } = await searchCoverages({
     coverages: promptRows,
     query,
     region,
@@ -139,6 +140,23 @@ export async function POST(req: NextRequest) {
     ...(enriched.length === 0 && gapAnswer ? { gapAnswer } : {}),
   };
 
+  // ALI-121: persist a ClaudeUsage row when the upstream call landed (presence
+  // of `model`/`usage` proves a real round-trip vs. a network/HTTP failure).
+  // Mirror the £-cost into SearchEvent.costPence so the existing retention
+  // dashboard sees per-search spend without a join.
+  let costPence: number | null = null;
+  if (model) {
+    const cost = computeCost(model, usage);
+    costPence = cost.costPence;
+    recordClaudeCall({
+      userId: session.userId,
+      task: 'search-rerank',
+      model,
+      usage,
+      successful: enriched.length > 0,
+    });
+  }
+
   // Fire-and-forget instrumentation. A write failure must NOT fail the search.
   prisma.searchEvent
     .create({
@@ -147,7 +165,7 @@ export async function POST(req: NextRequest) {
         query,
         resultCount: enriched.length,
         successful: enriched.length > 0,
-        costPence: null,
+        costPence,
       },
     })
     .catch((err) => console.error('searchEvent insert failed', err));

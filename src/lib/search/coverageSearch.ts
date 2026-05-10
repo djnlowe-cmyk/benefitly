@@ -32,9 +32,24 @@ export interface GapAnswer {
   recommendedTypes: string[];
 }
 
+// Anthropic /v1/messages usage block. Mirrors the shape we persist via
+// claudeUsage.recordClaudeCall — kept loose because the API occasionally
+// adds new fields and we don't want to drop unknown ones.
+export interface ClaudeUsageBlock {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_read_input_tokens?: number;
+  cache_creation_input_tokens?: number;
+}
+
 export interface SearchCoveragesResult {
   results: SearchHit[];
   gapAnswer?: GapAnswer;
+  // Present when the upstream call returned 2xx. Absent on network/HTTP
+  // failure so callers can distinguish "model returned 0 hits" from
+  // "request never landed". Lets the route record cost only on real calls.
+  usage?: ClaudeUsageBlock;
+  model?: string;
 }
 
 export interface SearchCoveragesArgs {
@@ -160,6 +175,8 @@ function validateGap(raw: unknown): GapAnswer | undefined {
   return { explanation, recommendedTypes };
 }
 
+export const COVERAGE_SEARCH_MODEL = 'claude-sonnet-4-20250514';
+
 export async function searchCoverages(
   args: SearchCoveragesArgs,
 ): Promise<SearchCoveragesResult> {
@@ -188,7 +205,7 @@ export async function searchCoverages(
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: COVERAGE_SEARCH_MODEL,
         max_tokens: 2048,
         messages: [
           {
@@ -210,19 +227,25 @@ export async function searchCoverages(
     return { results: [], gapAnswer: FALLBACK_GAP };
   }
 
-  let body: { content?: { text?: string }[] };
+  let body: { content?: { text?: string }[]; usage?: ClaudeUsageBlock };
   try {
-    body = (await upstream.json()) as { content?: { text?: string }[] };
+    body = (await upstream.json()) as {
+      content?: { text?: string }[];
+      usage?: ClaudeUsageBlock;
+    };
   } catch {
     console.error('[searchCoverages] upstream JSON unreadable');
     return { results: [], gapAnswer: FALLBACK_GAP };
   }
 
+  const usage = body.usage;
+  const model = COVERAGE_SEARCH_MODEL;
+
   const text = body.content?.[0]?.text ?? '';
   const parsed = parseJsonBlock(text);
   if (!parsed || typeof parsed !== 'object') {
     console.error('[searchCoverages] upstream content not parseable');
-    return { results: [], gapAnswer: FALLBACK_GAP };
+    return { results: [], gapAnswer: FALLBACK_GAP, usage, model };
   }
 
   const obj = parsed as Record<string, unknown>;
@@ -234,11 +257,11 @@ export async function searchCoverages(
   }
 
   if (results.length > 0) {
-    return { results };
+    return { results, usage, model };
   }
 
   // Empty results → expose the gapAnswer if the model produced one,
   // otherwise return an empty results list with no gap (caller decides).
   const gap = validateGap(obj.gapAnswer);
-  return gap ? { results, gapAnswer: gap } : { results };
+  return gap ? { results, gapAnswer: gap, usage, model } : { results, usage, model };
 }

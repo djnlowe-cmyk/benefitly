@@ -27,6 +27,7 @@ model User {
   documents         Document[]
   conciergeQueries  ConciergeQuery[]
   searchEvents      SearchEvent[]
+  claudeUsage       ClaudeUsage[]
 }
 
 model FamilyMember {
@@ -168,6 +169,7 @@ model Document {
   userId       String
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   coverages    Coverage[]
+  claudeUsage  ClaudeUsage[]
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -206,4 +208,29 @@ model ConciergeQuery {
 
   @@index([userId])
   @@index([status])
+}
+
+// Per-Claude-call instrumentation. Drives the AI cost & quality dashboard
+// (per-doc + per-user £-spend, weekly digest, £1.10 trip-wire). We only
+// persist non-sensitive metadata: token counts, model, task, costs. Never
+// the prompt body or the response text — see security-compliance §2.
+model ClaudeUsage {
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentId           String?
+  document             Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  task                 String
+  model                String
+  inputTokens          Int       @default(0)
+  outputTokens         Int       @default(0)
+  cacheReadTokens      Int       @default(0)
+  cacheCreationTokens  Int       @default(0)
+  costPence            Int       @default(0)
+  successful           Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([documentId])
+  @@index([task, createdAt])
 }
