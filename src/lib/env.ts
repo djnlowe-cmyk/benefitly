@@ -14,7 +14,7 @@ const requiredOneOf: Array<readonly string[]> = [
   ['AUTH_SECRET', 'NEXTAUTH_SECRET'],
 ];
 
-const optional = ['ANTHROPIC_API_KEY', 'BLOB_READ_WRITE_TOKEN', 'NEXTAUTH_URL'] as const;
+const optional = ['ANTHROPIC_API_KEY', 'BLOB_READ_WRITE_TOKEN', 'NEXTAUTH_URL', 'SENTRY_DSN'] as const;
 
 let validated = false;
 
