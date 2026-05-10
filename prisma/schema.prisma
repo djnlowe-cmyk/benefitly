@@ -26,6 +26,7 @@ model User {
   familyMembers     FamilyMember[]
   documents         Document[]
   conciergeQueries  ConciergeQuery[]
+  searchEvents      SearchEvent[]
 }
 
 model FamilyMember {
@@ -172,6 +173,23 @@ model Document {
   updatedAt    DateTime @updatedAt
 
   @@index([userId])
+}
+
+// Per-call instrumentation for /api/search. Drives the retention-monetisation
+// leading indicators (TTFV, activation rate, search-issued rate). Additive —
+// fire-and-forget on the request path so a write failure never fails search.
+model SearchEvent {
+  id           String   @id @default(cuid())
+  userId       String
+  query        String
+  resultCount  Int
+  successful   Boolean
+  costPence    Int?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 // Captures user-submitted "we couldn't answer this" feedback from the search

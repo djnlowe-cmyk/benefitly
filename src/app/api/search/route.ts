@@ -138,5 +138,19 @@ export async function POST(req: NextRequest) {
     conciergeAvailable: true,
     ...(enriched.length === 0 && gapAnswer ? { gapAnswer } : {}),
   };
+
+  // Fire-and-forget instrumentation. A write failure must NOT fail the search.
+  prisma.searchEvent
+    .create({
+      data: {
+        userId: session.userId,
+        query,
+        resultCount: enriched.length,
+        successful: enriched.length > 0,
+        costPence: null,
+      },
+    })
+    .catch((err) => console.error('searchEvent insert failed', err));
+
   return NextResponse.json(responseBody);
 }
